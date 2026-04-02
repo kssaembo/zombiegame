@@ -1063,6 +1063,14 @@ export default function App() {
         </AnimatePresence>
       </main>
 
+      <footer className="relative z-10 py-12 text-center border-t border-zinc-800/50 mt-20">
+        <div className="container mx-auto px-4">
+          <p className="text-zinc-500 text-sm mb-2">제안이나 문의사항이 있으시면 언제든 메일 주세요.</p>
+          <p className="text-zinc-400 text-sm font-medium mb-4">Contact: <a href="mailto:sinjoppo@naver.com" className="hover:text-purple-400 transition-colors">sinjoppo@naver.com</a></p>
+          <p className="text-zinc-600 text-xs tracking-wider uppercase">ⓒ 2026. Kwon's class. All rights reserved.</p>
+        </div>
+      </footer>
+
       {/* Modal / Notification */}
       <AnimatePresence>
         {modal && (
