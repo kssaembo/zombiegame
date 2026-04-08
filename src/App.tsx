@@ -514,8 +514,8 @@ const GameView = React.memo(({
       </div>
 
       {/* Action Bar */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 z-40">
-        <div className="flex items-center gap-4">
+      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-4 z-50">
+        <div className="flex items-center gap-4 bg-black/40 backdrop-blur-md p-4 rounded-full border border-zinc-800/50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
           <Button 
             size="lg" 
             variant="neon" 
@@ -539,12 +539,12 @@ const GameView = React.memo(({
       </div>
 
       {/* Teacher Page Button */}
-      <div className="fixed bottom-8 right-8 z-40">
+      <div className="fixed bottom-16 right-8 z-50">
         <Button 
           variant="ghost" 
           size="sm"
           onClick={onShowTeacherPage}
-          className="text-zinc-600 hover:text-zinc-400"
+          className="text-zinc-600 hover:text-zinc-400 bg-black/20 backdrop-blur-sm rounded-full px-4"
         >
           교사 페이지
         </Button>
@@ -1002,7 +1002,7 @@ export default function App() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-green-900/10 blur-[120px] rounded-full" />
       </div>
 
-      <main className="relative z-10 container mx-auto px-4 py-8">
+      <main className="relative z-10 container mx-auto px-4 py-8 pb-64">
         <AnimatePresence mode="wait">
           {view === 'START' && <StartView key="start" onStart={handleStart} />}
           {view === 'SETUP_CONFIG' && (
@@ -1063,7 +1063,7 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="relative z-10 py-12 text-center border-t border-zinc-800/50 mt-20">
+      <footer className="relative z-0 py-16 text-center border-t border-zinc-800/50 mt-32 bg-black/50">
         <div className="container mx-auto px-4">
           <p className="text-zinc-500 text-sm mb-2">제안이나 문의사항이 있으시면 언제든 메일 주세요.</p>
           <p className="text-zinc-400 text-sm font-medium mb-4">Contact: <a href="mailto:sinjoppo@naver.com" className="hover:text-purple-400 transition-colors">sinjoppo@naver.com</a></p>
