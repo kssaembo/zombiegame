@@ -584,11 +584,11 @@ const GameView = React.memo(({
             <div className="flex justify-center gap-8 mb-8">
               <div className="text-center">
                 <p className="text-xs text-zinc-500 uppercase mb-1">좀비 수</p>
-                <p className="text-3xl font-black text-green-500">{students.filter(s => s.isZombie).length}</p>
+                <p className="text-3xl font-black text-green-500">{students.filter(s => s.isZombie || !s.touchedThisRound).length}</p>
               </div>
               <div className="text-center">
                 <p className="text-xs text-zinc-500 uppercase mb-1">인간 수</p>
-                <p className="text-3xl font-black text-white">{students.filter(s => !s.isZombie).length}</p>
+                <p className="text-3xl font-black text-white">{students.filter(s => !s.isZombie && s.touchedThisRound).length}</p>
               </div>
             </div>
             <p className="text-zinc-400 mb-8">터치하지 않은 학생은 좀비가 되었습니다.</p>
