@@ -18,6 +18,8 @@ import {
   CheckCircle2, 
   AlertTriangle,
   ChevronRight,
+  ChevronLeft,
+  BookOpen,
   Plus,
   X,
   Download,
@@ -178,24 +180,275 @@ const TeacherPage = React.memo(({
 
 // --- View Components (Moved outside App to prevent flickering) ---
 
-const StartView = React.memo(({ onStart }: { onStart: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="flex flex-col items-center justify-center min-h-[80vh] text-center"
-  >
-    <Skull className="w-24 h-24 text-green-500 mb-6 animate-pulse" />
-    <h1 className="text-6xl font-black mb-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-green-500">
-      ZOMBIE GAME
-    </h1>
-    <p className="text-zinc-400 mb-12 max-w-md">
-      '더 지니어스' 스타일의 좀비 게임 관리 시스템. 교실에서 긴장감 넘치는 게임을 시작하세요.
-    </p>
-    <Button size="lg" onClick={onStart} variant="neon">
-      게임 시작하기 <ChevronRight className="w-6 h-6" />
-    </Button>
-  </motion.div>
-));
+const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const slides = [
+    {
+      title: "1장. 게임 개요 및 진영",
+      icon: <Users className="w-12 h-12 text-purple-400" />,
+      content: (
+        <div className="space-y-4">
+          <p className="text-zinc-300 leading-relaxed text-sm md:text-base">
+            게임은 비밀리에 나뉜 두 <span className="font-bold">진영</span>(인간과 좀비) 사이의 고도의 생존 예측 대결입니다.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
+              <span className="text-purple-400 text-xs font-bold uppercase tracking-wider block">인간 진영</span>
+              <p className="text-zinc-300 text-xs leading-relaxed">좀비의 감염을 피하고, 치료제를 사용하여 마지막까지 인간으로서 살아남으세요.</p>
+            </div>
+            <div className="p-4 rounded-xl bg-green-950/20 border border-green-900/40 space-y-2">
+              <span className="text-green-400 text-xs font-bold uppercase tracking-wider block">좀비 진영</span>
+              <p className="text-green-300 text-xs leading-relaxed font-bold">좀비의 목표: 모든 인간을 감염시키세요.</p>
+            </div>
+          </div>
+          <p className="text-zinc-500 text-[11px] leading-relaxed mt-4">
+            ※ 시작 라운드 시 일부 학생이 무작위로 '최초 좀비'로 선발되며 선발 정보는 교사 화면에서 철저히 관리됩니다.
+          </p>
+        </div>
+      )
+    },
+    {
+      title: "2장. 터치 규칙",
+      icon: <Zap className="w-12 h-12 text-yellow-400" />,
+      content: (
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-500/30 space-y-2">
+            <span className="text-purple-300 text-xs font-black block">💡 라운드 핵심 목표</span>
+            <p className="text-zinc-200 text-sm leading-relaxed font-bold">
+              목표: 모든 플레이어는 매 라운드마다 1번 이상 터치를 해야 합니다.<br />터치를 하지 못한 플레이어는 라운드 종료 후 좀비가 됩니다.
+            </p>
+          </div>
+          
+          <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
+            <h4 className="text-yellow-400 font-bold text-xs md:text-sm">⚠️ 중요 (중복 방지 규칙)</h4>
+            <p className="text-zinc-300 text-xs leading-relaxed">
+              이미 한 번 터치한 두 플레이어는 전체 게임 내에서 다시 터치할 수 없습니다.<br />터치를 시도하면 시스템에서 사전 중복 경고를 표시합니다.
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: "3장. 치료제 사용",
+      icon: <Heart className="w-12 h-12 text-red-500" />,
+      content: (
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+              <h5 className="text-red-400 text-xs font-bold mb-1">🧪 생존 치료</h5>
+              <p className="text-zinc-300 text-[13px] leading-relaxed">
+                해당 라운드에서 감염된 학생은 치료제를 사용하여 다시 인간이 될 수 있습니다.
+              </p>
+            </div>
+            <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+              <h5 className="text-blue-400 text-xs font-bold mb-1">🎒 치료제 한도</h5>
+              <p className="text-zinc-300 text-[13px] leading-relaxed">
+                치료제는 기본적으로 모든 플레이어에게 1개씩만 지급됩니다. 추가 구매는 선생님께 문의해주세요.
+              </p>
+            </div>
+            <div className="p-3 bg-red-950/20 rounded-lg border border-red-900/40">
+              <h5 className="text-red-300 text-xs font-bold mb-1">⚠️ 최초 좀비 치료 불가</h5>
+              <p className="text-zinc-300 text-[13px] leading-relaxed">
+                최초 좀비는 치료제를 사용해도 치료되지 않습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      title: "4장. 추가 규칙",
+      icon: <AlertTriangle className="w-12 h-12 text-orange-400" />,
+      content: (
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl bg-orange-950/20 border border-orange-900/30 space-y-2">
+            <h4 className="text-orange-400 font-bold text-sm">무활동 패널티</h4>
+            <p className="text-zinc-200 text-xs leading-relaxed font-semibold">
+              매 라운드 제한시간 내에 아무하고도 접촉(터치)하지 않은 인간 플레이어는<br />라운드 종료 시 감염되어 좀비로 변합니다.
+            </p>
+          </div>
+          <p className="text-zinc-400 text-xs leading-relaxed">
+            ※ 해당 라운드 동안 한 번도 터치를 안 한 학생은 라운드가 끝나면 자동으로 감염이 됩니다.
+          </p>
+        </div>
+      )
+    },
+    {
+      title: "5장. 승리 조건",
+      icon: <Skull className="w-12 h-12 text-green-500" />,
+      content: (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="p-3 bg-purple-950/20 border border-purple-900/40 rounded-xl space-y-1">
+              <span className="text-purple-400 text-xs font-bold">인간 진영 승리 조건</span>
+              <p className="text-zinc-300 text-xs leading-relaxed">
+                최종 라운드가 마무리되는 시점에 생존한 인간 진영의 플레이어가 단 한 명이라도 존재한다면 승리합니다.
+              </p>
+            </div>
+            
+            <div className="p-3 bg-green-950/20 border border-green-900/40 rounded-xl space-y-1">
+              <span className="text-green-400 text-xs font-bold">좀비 진영 승리 조건</span>
+              <p className="text-zinc-300 text-xs leading-relaxed">
+                교실 내 모든 플레이어가 좀비가 되면 좀비 진영이 승리합니다.
+              </p>
+            </div>
+          </div>
+          
+          <div className="mt-4 p-3 bg-purple-950/30 border border-purple-800/30 rounded-xl text-center">
+            <p className="text-purple-300 text-[12px] font-bold leading-relaxed">
+              유튜브에서 🎬 '지니어스 게임-좀비게임'을 검색해 보시면<br />영상 형태의 게임 소개 영상을 보실 수 있습니다.
+            </p>
+          </div>
+        </div>
+      )
+    }
+  ];
+
+  const handlePrev = () => setCurrentSlide((prev) => Math.max(0, prev - 1));
+  const handleNext = () => {
+    if (currentSlide === slides.length - 1) {
+      setIsGuideOpen(false);
+      setCurrentSlide(0);
+    } else {
+      setCurrentSlide((prev) => prev + 1);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col items-center justify-center min-h-[80vh] text-center"
+    >
+      <Skull className="w-24 h-24 text-green-500 mb-6 animate-pulse" />
+      <h1 className="text-6xl font-black mb-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-green-500">
+        ZOMBIE GAME
+      </h1>
+      
+      {/* 바뀐 메인 설명 태그라인 */}
+      <div className="flex flex-wrap justify-center gap-2 mb-12 max-w-lg">
+        <span className="px-3 py-1 bg-purple-950/40 border border-purple-800/50 text-purple-400 text-xs md:text-sm font-semibold rounded-full shadow-lg">
+          #지니어스한 학급 놀이
+        </span>
+        <span className="px-3 py-1 bg-green-950/40 border border-green-800/50 text-green-400 text-xs md:text-sm font-semibold rounded-full shadow-lg">
+          #과학 감염병 단원
+        </span>
+        <span className="px-3 py-1 bg-zinc-900 border border-zinc-700/50 text-zinc-300 text-xs md:text-sm font-semibold rounded-full shadow-lg">
+          #좀비게임
+        </span>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <Button size="lg" onClick={onStart} variant="neon" className="w-56 h-14 text-lg">
+          게임 시작하기 <ChevronRight className="w-6 h-6 ml-1" />
+        </Button>
+        <Button 
+          size="lg" 
+          onClick={() => {
+            setCurrentSlide(0);
+            setIsGuideOpen(true);
+          }} 
+          variant="secondary" 
+          className="w-56 h-14 text-lg border-zinc-700 text-zinc-300 hover:border-purple-500 hover:text-white transition-all duration-300"
+        >
+          <BookOpen className="w-5 h-5 mr-2 text-purple-400" /> 사용 설명서
+        </Button>
+      </div>
+
+      {/* 가이드 대형 팝업 모달 */}
+      <AnimatePresence>
+        {isGuideOpen && (
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-zinc-950 border border-zinc-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+            >
+              {/* 모달 헤더 */}
+              <div className="p-6 border-b border-zinc-850 flex items-center justify-between bg-black/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-950/50 border border-purple-800/30 rounded-xl">
+                    <BookOpen className="w-6 h-6 text-purple-400" />
+                  </div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">지니어스 좀비게임 사용 설명서</h2>
+                </div>
+                <button 
+                  onClick={() => setIsGuideOpen(false)}
+                  className="p-2 rounded-full hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* 모달 본문 (슬라이드 설명 영역) */}
+              <div className="p-6 md:p-8 flex-1 overflow-y-auto flex flex-col justify-between min-h-[300px]">
+                <div className="space-y-6">
+                  {/* 슬라이드 아이콘 및 제목 */}
+                  <div className="flex items-center gap-4">
+                    {slides[currentSlide].icon}
+                    <h3 className="text-2xl font-black text-white tracking-tight">
+                      {slides[currentSlide].title}
+                    </h3>
+                  </div>
+
+                  {/* 슬라이드 세부 콘텐츠 */}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentSlide}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="min-h-[160px]"
+                    >
+                      {slides[currentSlide].content}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+
+                {/* 슬라이드 점(인디케이터) 및 이동 바 */}
+                <div className="mt-8 flex items-center justify-between border-t border-zinc-900 pt-6">
+                  <div className="flex gap-2">
+                    {slides.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentSlide(idx)}
+                        className={`h-2.5 rounded-full transition-all duration-300 ${idx === currentSlide ? 'w-8 bg-purple-500' : 'w-2.5 bg-zinc-800'}`}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handlePrev}
+                      disabled={currentSlide === 0}
+                      className={`px-4 ${currentSlide === 0 ? 'opacity-30 pointer-events-none' : ''}`}
+                    >
+                      <ChevronLeft className="w-4 h-4 mr-1" /> 이전
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={currentSlide === slides.length - 1 ? "neon" : "primary"}
+                      onClick={handleNext}
+                      className="px-6 min-w-[80px]"
+                    >
+                      {currentSlide === slides.length - 1 ? "완료" : "다음"} <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+});
 
 const SetupConfigView = React.memo(({ 
   config, 
