@@ -452,10 +452,12 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
 
 const SetupConfigView = React.memo(({ 
   config, 
-  onNext 
+  onNext,
+  onBack
 }: { 
   config: GameConfig; 
-  onNext: (newConfig: GameConfig) => void 
+  onNext: (newConfig: GameConfig) => void;
+  onBack: () => void;
 }) => {
   const [localRoundTime, setLocalRoundTime] = useState(config.roundTime);
 
@@ -486,7 +488,10 @@ const SetupConfigView = React.memo(({
           </div>
         </div>
 
-        <div className="mt-12 flex justify-end">
+        <div className="mt-12 flex justify-between items-center">
+          <Button onClick={onBack} variant="secondary">
+            <ChevronLeft className="w-5 h-5 mr-1" /> 이전
+          </Button>
           <Button onClick={() => onNext({ roundTime: localRoundTime, totalRounds: 3 })}>
             다음 단계 <ChevronRight className="w-5 h-5" />
           </Button>
@@ -501,13 +506,15 @@ const SetupStudentsView = React.memo(({
   onAddStudents, 
   onRemoveStudent, 
   onClearAll, 
-  onNext 
+  onNext,
+  onBack
 }: { 
   students: Student[]; 
   onAddStudents: (names: string[]) => void; 
   onRemoveStudent: (id: string) => void; 
   onClearAll: () => void; 
   onNext: () => void; 
+  onBack: () => void;
 }) => {
   const [bulkInput, setBulkInput] = useState('');
   
@@ -576,9 +583,14 @@ const SetupStudentsView = React.memo(({
               </button>
             )}
           </div>
-          <Button onClick={onNext} disabled={students.length < 2}>
-            다음 단계 <ChevronRight className="w-5 h-5" />
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={onBack} variant="secondary">
+              <ChevronLeft className="w-5 h-5 mr-1" /> 이전
+            </Button>
+            <Button onClick={onNext} disabled={students.length < 2}>
+              다음 단계 <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </Card>
     </motion.div>
@@ -588,11 +600,13 @@ const SetupStudentsView = React.memo(({
 const SetupZombiesView = React.memo(({ 
   students, 
   onToggleZombie, 
-  onStart 
+  onStart,
+  onBack
 }: { 
   students: Student[]; 
   onToggleZombie: (id: string) => void; 
   onStart: () => void; 
+  onBack: () => void;
 }) => {
   const zombieCount = students.filter(s => s.isZombie).length;
 
@@ -610,28 +624,35 @@ const SetupZombiesView = React.memo(({
 
         <p className="text-zinc-400 mb-6">최초 좀비로 활동할 학생들을 선택하세요.</p>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {students.map((s) => (
-            <button 
-              key={s.id}
-              onClick={() => onToggleZombie(s.id)}
-              className={`
-                p-4 rounded-2xl border-2 transition-all duration-200 text-center
-                ${s.isZombie 
-                  ? 'bg-green-500/10 border-green-500 text-green-500 shadow-lg shadow-green-500/10' 
-                  : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'}
-              `}
-            >
-              <span className="text-lg font-bold">{s.name}</span>
-            </button>
-          ))}
+        <div className="overflow-y-auto max-h-[400px] pr-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {students.map((s) => (
+              <button 
+                key={s.id}
+                onClick={() => onToggleZombie(s.id)}
+                className={`
+                  p-4 rounded-2xl border-2 transition-all duration-200 text-center
+                  ${s.isZombie 
+                    ? 'bg-green-500/10 border-green-500 text-green-500 shadow-lg shadow-green-500/10' 
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'}
+                `}
+              >
+                <span className="text-lg font-bold">{s.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="mt-12 flex justify-between items-center">
           <p className="text-zinc-500">좀비: {zombieCount}명 / 인간: {students.length - zombieCount}명</p>
-          <Button onClick={onStart} disabled={zombieCount === 0} variant="neon">
-            게임 시작 <Play className="w-5 h-5" />
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={onBack} variant="secondary">
+              <ChevronLeft className="w-5 h-5 mr-1" /> 이전
+            </Button>
+            <Button onClick={onStart} disabled={zombieCount === 0} variant="neon">
+              게임 시작 <Play className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </Card>
     </motion.div>
@@ -656,7 +677,8 @@ const GameView = React.memo(({
   showTeacherPage,
   onTeacherPageClose,
   logs,
-  onExport
+  onExport,
+  onForceEnd
 }: { 
   students: Student[]; 
   currentRound: number; 
@@ -676,7 +698,10 @@ const GameView = React.memo(({
   onTeacherPageClose: () => void;
   logs: GameLog[];
   onExport: () => void;
+  onForceEnd: () => void;
 }) => {
+  const [isForceEndConfirmOpen, setIsForceEndConfirmOpen] = useState(false);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -715,55 +740,57 @@ const GameView = React.memo(({
       </div>
 
       {/* Student Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-32">
-        {students.map((s) => (
-          <button
-            key={s.id}
-            disabled={!isTimerRunning}
-            onClick={() => onToggleSelection(s.id)}
-            className={`
-              relative p-6 rounded-2xl border-2 transition-all duration-300 text-center group overflow-hidden
-              ${selectedIds.includes(s.id) 
-                ? 'border-purple-500 bg-purple-500/20 -translate-y-2 shadow-[0_0_25px_rgba(168,85,247,0.4)]' 
-                : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 hover:-translate-y-1'}
-              ${!isTimerRunning ? 'opacity-50 grayscale' : ''}
-            `}
-          >
-            <span className={`text-xl font-bold block mb-1 transition-colors ${selectedIds.includes(s.id) ? 'text-purple-400' : 'text-white'}`}>
-              {s.name}
-            </span>
-            <div className="flex flex-col gap-1 items-center">
-              {s.touchedThisRound && (
-                <span className="text-[10px] bg-blue-500/80 text-white px-2 py-0.5 rounded-full uppercase font-black backdrop-blur-sm">
-                  Touched
-                </span>
-              )}
-            </div>
-            
-            <AnimatePresence>
+      <div className="overflow-y-auto max-h-[calc(100vh-380px)] pr-2 mb-32">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {students.map((s) => (
+            <button
+              key={s.id}
+              disabled={!isTimerRunning}
+              onClick={() => onToggleSelection(s.id)}
+              className={`
+                relative p-6 rounded-2xl border-2 transition-all duration-300 text-center group overflow-hidden
+                ${selectedIds.includes(s.id) 
+                  ? 'border-purple-500 bg-purple-500/20 -translate-y-2 shadow-[0_0_25px_rgba(168,85,247,0.4)]' 
+                  : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 hover:-translate-y-1'}
+                ${!isTimerRunning ? 'opacity-50 grayscale' : ''}
+              `}
+            >
+              <span className={`text-xl font-bold block mb-1 transition-colors ${selectedIds.includes(s.id) ? 'text-purple-400' : 'text-white'}`}>
+                {s.name}
+              </span>
+              <div className="flex flex-col gap-1 items-center">
+                {s.touchedThisRound && (
+                  <span className="text-[10px] bg-blue-500/80 text-white px-2 py-0.5 rounded-full uppercase font-black backdrop-blur-sm">
+                    Touched
+                  </span>
+                )}
+              </div>
+              
+              <AnimatePresence>
+                {selectedIds.includes(s.id) && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    className="absolute top-2 right-2"
+                  >
+                    <div className="bg-purple-500 rounded-full p-1 shadow-lg shadow-purple-500/50">
+                      <CheckCircle2 className="w-3 h-3 text-white" />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {selectedIds.includes(s.id) && (
                 <motion.div 
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                  className="absolute top-2 right-2"
-                >
-                  <div className="bg-purple-500 rounded-full p-1 shadow-lg shadow-purple-500/50">
-                    <CheckCircle2 className="w-3 h-3 text-white" />
-                  </div>
-                </motion.div>
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent pointer-events-none"
+                />
               )}
-            </AnimatePresence>
-
-            {selectedIds.includes(s.id) && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent pointer-events-none"
-              />
-            )}
-          </button>
-        ))}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Action Bar */}
@@ -802,6 +829,40 @@ const GameView = React.memo(({
           교사 페이지
         </Button>
       </div>
+
+      {/* Force End Game Button */}
+      <div className="fixed bottom-16 left-8 z-50">
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={() => setIsForceEndConfirmOpen(true)}
+          className="text-red-500 hover:text-red-400 hover:bg-red-950/20 bg-black/20 backdrop-blur-sm rounded-full px-4"
+        >
+          게임 강제 종료
+        </Button>
+      </div>
+
+      {/* Force End Confirmation Modal */}
+      <AnimatePresence>
+        {isForceEndConfirmOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6"
+          >
+            <Card className="max-w-sm w-full text-center">
+              <AlertTriangle className="w-12 h-12 text-zinc-400 mx-auto mb-4" />
+              <h3 className="text-xl font-bold mb-2 text-white">게임 종료</h3>
+              <p className="text-zinc-400 mb-6">게임을 종료하시겠습니까?</p>
+              <div className="flex gap-3">
+                <Button variant="secondary" className="flex-1" onClick={() => setIsForceEndConfirmOpen(false)}>취소</Button>
+                <Button variant="danger" className="flex-1" onClick={() => { setIsForceEndConfirmOpen(false); onForceEnd(); }}>확인</Button>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Cure Confirmation Modal */}
       <AnimatePresence>
@@ -938,7 +999,7 @@ const ResultsView = React.memo(({
           {winner === 'HUMAN' && (
             <div className="max-w-2xl mx-auto mb-12">
               <h3 className="text-xl font-bold mb-4 text-zinc-400">개별 승점 순위 (인간만 표시)</h3>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-2">
                 {students
                   .filter(s => !s.isZombie)
                   .sort((a, b) => b.points - a.points)
@@ -1231,6 +1292,23 @@ export default function App() {
   const handleConfirmCureCancel = React.useCallback(() => setConfirmCureId(null), []);
   const handleClearAll = React.useCallback(() => setStudents([]), []);
 
+  const handleForceEnd = React.useCallback(() => {
+    setView('START');
+    setIsTimerRunning(false);
+    setCurrentRound(1);
+    setLogs([]);
+    setTouchHistory([]);
+    setSelectedIds([]);
+    setStudents(prev => prev.map(s => ({
+      ...s,
+      isZombie: false,
+      isOriginalZombie: false,
+      infectedThisRound: false,
+      points: 0,
+      touchedThisRound: false
+    })));
+  }, []);
+
   // --- Timer Effect ---
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -1263,6 +1341,7 @@ export default function App() {
               key="setup-config" 
               config={config} 
               onNext={handleConfigNext} 
+              onBack={() => setView('START')}
             />
           )}
           {view === 'SETUP_STUDENTS' && (
@@ -1273,6 +1352,7 @@ export default function App() {
               onRemoveStudent={removeStudent}
               onClearAll={handleClearAll}
               onNext={handleStudentsNext}
+              onBack={() => setView('SETUP_CONFIG')}
             />
           )}
           {view === 'SETUP_ZOMBIES' && (
@@ -1281,6 +1361,7 @@ export default function App() {
               students={students}
               onToggleZombie={toggleZombie}
               onStart={startRound}
+              onBack={() => setView('SETUP_STUDENTS')}
             />
           )}
           {view === 'GAME' && (
@@ -1304,6 +1385,7 @@ export default function App() {
               onTeacherPageClose={handleCloseTeacherPage}
               logs={logs}
               onExport={exportToExcel}
+              onForceEnd={handleForceEnd}
             />
           )}
           {view === 'RESULTS' && (
