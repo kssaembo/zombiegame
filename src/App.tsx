@@ -23,7 +23,8 @@ import {
   Plus,
   X,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Youtube
 } from 'lucide-react';
 import { Student, GameState, GameConfig, GameLog } from './types';
 
@@ -366,6 +367,22 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
             <BookOpen className="w-5 h-5 mr-2 text-purple-400" /> 사용 설명서
           </Button>
         </div>
+        <div>
+          <a
+            href="https://youtu.be/ZqVtWvMgoQI"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 px-5 h-14 rounded-2xl border border-red-500/40 text-red-400 bg-red-950/10 hover:bg-red-950/20 hover:border-red-400 hover:text-white shadow-[0_0_15px_rgba(239,68,68,0.15)] hover:shadow-[0_0_25px_rgba(239,68,68,0.35)] transition-all duration-300 transform hover:scale-105"
+            title="소개 영상 보기"
+          >
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500 shadow-md shadow-red-500/30">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 text-white fill-current">
+                <polygon points="8 5 19 12 8 19" />
+              </svg>
+            </div>
+            <span className="text-lg font-bold">소개 영상</span>
+          </a>
+        </div>
       </div>
 
       {/* 가이드 대형 팝업 모달 */}
@@ -681,6 +698,7 @@ const GameView = React.memo(({
   onCureRequest, 
   onShowTeacherPage, 
   onNextRound,
+  onForceRoundEnd,
   config,
   confirmCureId,
   onConfirmCureCancel,
@@ -689,7 +707,9 @@ const GameView = React.memo(({
   onTeacherPageClose,
   logs,
   onExport,
-  onForceEnd
+  onForceEnd,
+  onToggleTimer,
+  onAddSeconds
 }: { 
   students: Student[]; 
   currentRound: number; 
@@ -701,6 +721,7 @@ const GameView = React.memo(({
   onCureRequest: (id: string) => void; 
   onShowTeacherPage: () => void; 
   onNextRound: () => void;
+  onForceRoundEnd: () => void;
   config: GameConfig;
   confirmCureId: string | null;
   onConfirmCureCancel: () => void;
@@ -710,6 +731,8 @@ const GameView = React.memo(({
   logs: GameLog[];
   onExport: () => void;
   onForceEnd: () => void;
+  onToggleTimer: () => void;
+  onAddSeconds: () => void;
 }) => {
   const [isForceEndConfirmOpen, setIsForceEndConfirmOpen] = useState(false);
 
@@ -729,12 +752,47 @@ const GameView = React.memo(({
           </div>
         </div>
         
-        <div className={`
-          flex items-center gap-4 px-8 py-4 rounded-3xl border-2 transition-colors
-          ${timeLeft < 10 ? 'border-red-500 text-red-500 animate-pulse' : 'border-zinc-700 text-zinc-200'}
-        `}>
-          <Timer className="w-8 h-8" />
-          <span className="text-4xl font-mono font-bold">{formatTime(timeLeft)}</span>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          {/* 라운드 종료 버튼 */}
+          <Button 
+            variant="secondary" 
+            size="sm"
+            onClick={onForceRoundEnd}
+            className="border-red-500/40 text-red-400 hover:bg-red-950/20 px-4 h-11 text-sm font-bold rounded-2xl"
+          >
+            라운드 종료
+          </Button>
+
+          {/* 타이머 */}
+          <div className={`
+            flex items-center gap-4 px-8 py-4 rounded-3xl border-2 transition-colors
+            ${timeLeft < 10 ? 'border-red-500 text-red-500 animate-pulse' : 'border-zinc-700 text-zinc-200'}
+            bg-zinc-900/40 backdrop-blur-sm
+          `}>
+            <Timer className="w-8 h-8" />
+            <span className="text-4xl font-mono font-bold">{formatTime(timeLeft)}</span>
+          </div>
+
+          <div className="flex gap-2">
+            {/* 일시정지 / 시작 버튼 */}
+            <Button 
+              variant="secondary" 
+              size="sm"
+              onClick={onToggleTimer}
+              className={`px-4 h-11 text-sm font-bold rounded-2xl ${!isTimerRunning ? 'border-green-500/40 text-green-400 hover:bg-green-950/20' : 'border-zinc-700 text-zinc-300'}`}
+            >
+              {isTimerRunning ? '일시정지' : '시작'}
+            </Button>
+            {/* +10초 버튼 */}
+            <Button 
+              variant="secondary" 
+              size="sm"
+              onClick={onAddSeconds}
+              className="border-blue-500/40 text-blue-400 hover:bg-blue-950/20 px-4 h-11 text-sm font-bold rounded-2xl"
+            >
+              +10초
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-4 items-center">
@@ -751,9 +809,8 @@ const GameView = React.memo(({
       </div>
 
       {/* Student Grid */}
-      <div className="overflow-y-auto max-h-[calc(100vh-380px)] pr-2 mb-32">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {students.map((s) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-32 pt-4 px-1">
+        {students.map((s) => (
             <button
               key={s.id}
               disabled={!isTimerRunning}
@@ -801,7 +858,6 @@ const GameView = React.memo(({
               )}
             </button>
           ))}
-        </div>
       </div>
 
       {/* Action Bar */}
@@ -1048,7 +1104,12 @@ export default function App() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [modal, setModal] = useState<{ title: string; message: string; type: 'info' | 'success' | 'warning' } | null>(null);
+  const [modal, setModal] = useState<{ 
+    title: string; 
+    message: string; 
+    type: 'info' | 'success' | 'warning';
+    onConfirm?: () => void;
+  } | null>(null);
   const [showTeacherPage, setShowTeacherPage] = useState(false);
   const [logs, setLogs] = useState<GameLog[]>([]);
   const [confirmCureId, setConfirmCureId] = useState<string | null>(null);
@@ -1303,6 +1364,27 @@ export default function App() {
   const handleConfirmCureCancel = React.useCallback(() => setConfirmCureId(null), []);
   const handleClearAll = React.useCallback(() => setStudents([]), []);
 
+  const handleToggleTimer = React.useCallback(() => {
+    setIsTimerRunning(prev => !prev);
+  }, []);
+
+  const handleAddSeconds = React.useCallback(() => {
+    setTimeLeft(prev => prev + 10);
+  }, []);
+
+  const handleRoundEndRequest = React.useCallback(() => {
+    setIsTimerRunning(false);
+    setModal({
+      title: '라운드 종료 확인',
+      message: '해당 라운드를 종료하시겠습니까? 확인을 누르면 감염 여부가 확정되고 라운드 결과 정산 및 다음 단계로 이동합니다.',
+      type: 'warning',
+      onConfirm: () => {
+        setIsTimerRunning(false);
+        setTimeLeft(0);
+      }
+    });
+  }, []);
+
   const handleForceEnd = React.useCallback(() => {
     setView('START');
     setIsTimerRunning(false);
@@ -1329,7 +1411,11 @@ export default function App() {
       }, 1000);
     } else if (timeLeft === 0 && isTimerRunning) {
       setIsTimerRunning(false);
-      setModal({ title: '라운드 종료', message: '시간이 모두 경과했습니다. 모든 행동이 중단됩니다.', type: 'info' });
+      setModal({ 
+        title: '라운드 종료', 
+        message: '시간이 모두 경과했습니다. 해당 라운드 결과를 정산합니다.', 
+        type: 'info'
+      });
     }
     return () => clearInterval(timer);
   }, [isTimerRunning, timeLeft]);
@@ -1388,6 +1474,7 @@ export default function App() {
               onCureRequest={handleCureRequest}
               onShowTeacherPage={handleShowTeacherPage}
               onNextRound={nextRound}
+              onForceRoundEnd={handleRoundEndRequest}
               config={config}
               confirmCureId={confirmCureId}
               onConfirmCureCancel={handleConfirmCureCancel}
@@ -1397,6 +1484,8 @@ export default function App() {
               logs={logs}
               onExport={exportToExcel}
               onForceEnd={handleForceEnd}
+              onToggleTimer={handleToggleTimer}
+              onAddSeconds={handleAddSeconds}
             />
           )}
           {view === 'RESULTS' && (
@@ -1429,12 +1518,28 @@ export default function App() {
             <Card className="max-w-sm w-full">
               <div className="flex items-center gap-3 mb-4">
                 {modal.type === 'success' && <CheckCircle2 className="text-green-500" />}
-                {modal.type === 'warning' && <AlertTriangle className="text-red-500" />}
+                {modal.type === 'warning' && <AlertTriangle className="text-amber-500" />}
                 {modal.type === 'info' && <Zap className="text-blue-500" />}
                 <h3 className="text-xl font-bold">{modal.title}</h3>
               </div>
-              <p className="text-zinc-400 mb-6">{modal.message}</p>
-              <Button className="w-full" onClick={() => setModal(null)}>확인</Button>
+              <p className="text-zinc-400 mb-6 text-sm leading-relaxed">{modal.message}</p>
+              <div className="flex gap-3">
+                {modal.onConfirm && (
+                  <Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>취소</Button>
+                )}
+                <Button 
+                  className="flex-1" 
+                  onClick={() => { 
+                    const confirmFn = modal.onConfirm;
+                    setModal(null); 
+                    if (confirmFn) {
+                      confirmFn();
+                    }
+                  }}
+                >
+                  확인
+                </Button>
+              </div>
             </Card>
           </motion.div>
         )}
