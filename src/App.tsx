@@ -269,6 +269,12 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
               매 라운드 제한시간 내에 아무하고도 접촉(터치)하지 않은 인간 플레이어는<br />라운드 종료 시 감염되어 좀비로 변합니다.
             </p>
           </div>
+          <div className="p-4 rounded-xl bg-orange-950/20 border border-orange-900/30 space-y-2">
+            <h4 className="text-orange-400 font-bold text-sm">치료제 사용 시 승점 유지 정책</h4>
+            <p className="text-zinc-200 text-xs leading-relaxed font-semibold">
+              좀비가 되었다가 치료제를 사용해 인간으로 되돌아 왔을 때<br />기존 인간일 때 가지고 있던 승점은 그대로 유지됩니다.
+            </p>
+          </div>
           <p className="text-zinc-400 text-xs leading-relaxed">
             ※ 해당 라운드 동안 한 번도 터치를 안 한 학생은 라운드가 끝나면 자동으로 감염이 됩니다.
           </p>
@@ -340,21 +346,26 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
         </span>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center gap-4">
-        <Button size="lg" onClick={onStart} variant="neon" className="w-56 h-14 text-lg">
+      <div className="flex flex-col sm:flex-row items-center gap-6 mt-4">
+        <Button size="lg" onClick={onStart} variant="neon" className="w-56 h-14 text-lg shadow-lg">
           게임 시작하기 <ChevronRight className="w-6 h-6 ml-1" />
         </Button>
-        <Button 
-          size="lg" 
-          onClick={() => {
-            setCurrentSlide(0);
-            setIsGuideOpen(true);
-          }} 
-          variant="secondary" 
-          className="w-56 h-14 text-lg border-zinc-700 text-zinc-300 hover:border-purple-500 hover:text-white transition-all duration-300"
-        >
-          <BookOpen className="w-5 h-5 mr-2 text-purple-400" /> 사용 설명서
-        </Button>
+        <div className="relative">
+          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-500 to-indigo-500 text-[10px] text-white font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider animate-bounce shadow-lg shadow-purple-500/30 z-10 select-none whitespace-nowrap">
+            📢 필독! 게임 설명
+          </span>
+          <Button 
+            size="lg" 
+            onClick={() => {
+              setCurrentSlide(0);
+              setIsGuideOpen(true);
+            }} 
+            variant="secondary" 
+            className="w-56 h-14 text-lg border-purple-500/40 text-purple-300 bg-purple-950/10 hover:bg-purple-950/20 hover:border-purple-400 hover:text-white shadow-[0_0_15px_rgba(168,85,247,0.15)] hover:shadow-[0_0_25px_rgba(168,85,247,0.35)] transition-all duration-300"
+          >
+            <BookOpen className="w-5 h-5 mr-2 text-purple-400" /> 사용 설명서
+          </Button>
+        </div>
       </div>
 
       {/* 가이드 대형 팝업 모달 */}
