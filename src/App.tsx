@@ -514,6 +514,16 @@ const SetupConfigView = React.memo(({
               onChange={(e) => setLocalRoundTime(parseInt(e.target.value) || 0)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
+            <div className="mt-2.5 p-3.5 bg-purple-950/30 border border-purple-500/30 rounded-xl text-xs md:text-sm text-purple-200 leading-relaxed space-y-1">
+              <p className="flex items-start gap-1.5">
+                <span className="text-purple-400 font-bold shrink-0">💡</span>
+                <span>라운드당 제한시간은 플레이어 수에 따라 달라지지만 7~8분을 추천드립니다.</span>
+              </p>
+              <p className="flex items-start gap-1.5 text-zinc-300">
+                <span className="text-purple-400 font-bold shrink-0">💡</span>
+                <span>게임 중간 타이머를 멈추거나 라운드를 강제 종료할 수 있기 때문에 시간 설정은 크게 중요하지 않습니다.</span>
+              </p>
+            </div>
           </div>
           <div className="p-4 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
             <p className="text-sm text-zinc-400">총 라운드는 <span className="text-purple-500 font-bold">3라운드</span>로 고정되어 있습니다.</p>
@@ -573,6 +583,12 @@ const SetupStudentsView = React.memo(({
           <label className="block text-sm font-medium text-zinc-400">
             학생 이름을 한 줄에 한 명씩 입력하세요 (엔터로 구분)
           </label>
+
+          <div className="p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-xl text-xs md:text-sm text-amber-200 font-medium leading-relaxed flex items-start gap-2 shadow-sm">
+            <span className="text-amber-400 font-bold shrink-0">📌 안내:</span>
+            <span>학생 명부 한글 파일에서 학생 이름 셀만 블록 지정하신 후 합치기를 합니다. 이후 학생 이름 전체를 복사해 붙여넣기를 하시면 편리합니다.</span>
+          </div>
+
           <textarea 
             value={bulkInput}
             onChange={(e) => setBulkInput(e.target.value)}

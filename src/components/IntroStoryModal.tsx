@@ -145,47 +145,108 @@ const playSound = (type: 'type' | 'confirm' | 'alert' | 'next' | 'siren') => {
       osc.start();
       osc.stop(ctx.currentTime + 0.12);
     } else if (type === 'siren') {
-      const ctx = new AudioCtx();
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-      const now = ctx.currentTime;
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc1.type = 'sawtooth';
-      osc2.type = 'square';
-
-      // 1.2s pitch modulation siren sound
-      osc1.frequency.setValueAtTime(550, now);
-      osc1.frequency.linearRampToValueAtTime(950, now + 0.3);
-      osc1.frequency.linearRampToValueAtTime(550, now + 0.6);
-      osc1.frequency.linearRampToValueAtTime(950, now + 0.9);
-      osc1.frequency.linearRampToValueAtTime(550, now + 1.2);
-
-      osc2.frequency.setValueAtTime(554, now);
-      osc2.frequency.linearRampToValueAtTime(954, now + 0.3);
-      osc2.frequency.linearRampToValueAtTime(554, now + 0.6);
-      osc2.frequency.linearRampToValueAtTime(954, now + 0.9);
-      osc2.frequency.linearRampToValueAtTime(554, now + 1.2);
-
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.setValueAtTime(0.2, now + 1.0);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.25);
-
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc1.start(now);
-      osc2.start(now);
-      osc1.stop(now + 1.25);
-      osc2.stop(now + 1.25);
+      playSynthSiren(5000);
     }
   } catch (e) {
     // Audio Context blocked or not supported
   }
+};
+
+// Web Audio API synthesized siren for 5 seconds fallback
+const playSynthSiren = (durationMs: number = 5000) => {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    const now = ctx.currentTime;
+    const durationSec = durationMs / 1000;
+
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sawtooth';
+    osc2.type = 'square';
+
+    // Loop siren sweep for 5 seconds
+    const cycleTime = 0.8;
+    const cycles = Math.ceil(durationSec / cycleTime);
+    for (let i = 0; i < cycles; i++) {
+      const startTime = now + (i * cycleTime);
+      osc1.frequency.setValueAtTime(550, startTime);
+      osc1.frequency.linearRampToValueAtTime(980, startTime + (cycleTime / 2));
+      osc1.frequency.linearRampToValueAtTime(550, startTime + cycleTime);
+
+      osc2.frequency.setValueAtTime(554, startTime);
+      osc2.frequency.linearRampToValueAtTime(984, startTime + (cycleTime / 2));
+      osc2.frequency.linearRampToValueAtTime(554, startTime + cycleTime);
+    }
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.setValueAtTime(0.2, now + durationSec - 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + durationSec);
+    osc2.stop(now + durationSec);
+  } catch (e) {
+    // Audio Context not supported
+  }
+};
+
+// Play audio file for 5 seconds on OUTRO (긴급 재난 문자)
+const playOutroAudioFile = (
+  durationMs: number = 5000,
+  onAudioCreated?: (audio: HTMLAudioElement) => void
+) => {
+  const candidatePaths = [
+    '/siren.mp3',
+    '/siren.wav',
+    '/emergency.mp3',
+    '/alarm.mp3',
+    '/alert.mp3',
+    '/sound.mp3',
+    '/audio.mp3',
+    '/siren.ogg',
+    '/emergency.wav',
+    '/alert.wav'
+  ];
+
+  const tryPlay = (index: number) => {
+    if (index >= candidatePaths.length) {
+      // Fallback to Web Audio API siren
+      playSynthSiren(durationMs);
+      return;
+    }
+
+    const audio = new Audio(candidatePaths[index]);
+    audio.volume = 0.9;
+
+    audio.play().then(() => {
+      if (onAudioCreated) onAudioCreated(audio);
+      setTimeout(() => {
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch (err) {
+          // ignore
+        }
+      }, durationMs);
+    }).catch(() => {
+      // Try next path if failed
+      tryPlay(index + 1);
+    });
+  };
+
+  tryPlay(0);
 };
 
 export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
@@ -202,6 +263,7 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const outroAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Reset state when opening modal
   useEffect(() => {
@@ -213,6 +275,26 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
       setIsTyping(false);
     }
   }, [isOpen]);
+
+  // Handle 5-second Audio playback strictly on OUTRO mode (긴급 재난 문자)
+  useEffect(() => {
+    if (mode === 'OUTRO' && soundEnabled) {
+      playOutroAudioFile(5000, (audio) => {
+        outroAudioRef.current = audio;
+      });
+    }
+
+    return () => {
+      if (outroAudioRef.current) {
+        try {
+          outroAudioRef.current.pause();
+          outroAudioRef.current.currentTime = 0;
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+  }, [mode, soundEnabled]);
 
   // Handle Typewriter effect for Quiz questions
   useEffect(() => {
@@ -264,8 +346,7 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
       setCurrentStepIndex((prev) => prev + 1);
       setShowAnswer(false);
     } else {
-      // Transition to OUTRO with 1s Siren Sound
-      if (soundEnabled) playSound('siren');
+      // Transition to OUTRO ( 긴급 재난 문자 )
       setMode('OUTRO');
     }
   };
