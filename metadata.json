@@ -1,5 +1,6 @@
 {
-  "name": "The Genius: Zombie Game Manager",
-  "description": "A web-based management system for the 'The Genius' Zombie Game, designed for classroom use.",
-  "requestFramePermissions": []
+  "name": "The Genius: Virus Game Manager",
+  "description": "A web-based management system for 'The Genius' Virus Game, designed for classroom use.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

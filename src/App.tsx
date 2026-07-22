@@ -27,6 +27,7 @@ import {
   Youtube
 } from 'lucide-react';
 import { Student, GameState, GameConfig, GameLog } from './types';
+import { IntroStoryModal } from './components/IntroStoryModal';
 
 // --- Utility Components ---
 
@@ -132,7 +133,7 @@ const TeacherPage = React.memo(({
                     <p className={`font-bold text-lg ${s.isZombie ? 'text-green-500' : 'text-white'}`}>{s.name}</p>
                     <p className="text-xs text-zinc-500">승점: {s.points}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {s.isZombie && <span className="text-[8px] bg-green-500 text-black px-1 rounded uppercase font-bold">Zombie</span>}
+                      {s.isZombie && <span className="text-[8px] bg-green-500 text-black px-1 rounded uppercase font-bold">감염자</span>}
                       {s.touchedThisRound && <span className="text-[8px] bg-blue-500 text-white px-1 rounded uppercase font-bold">Touched</span>}
                       {s.infectedThisRound && <span className="text-[8px] bg-red-500 text-white px-1 rounded uppercase font-bold">Infected</span>}
                     </div>
@@ -192,20 +193,20 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
       content: (
         <div className="space-y-4">
           <p className="text-zinc-300 leading-relaxed text-sm md:text-base">
-            게임은 비밀리에 나뉜 두 <span className="font-bold">진영</span>(인간과 좀비) 사이의 고도의 생존 예측 대결입니다.
+            게임은 비밀리에 나뉜 두 <span className="font-bold">진영</span>(비감염자와 감염자) 사이의 고도의 생존 예측 대결입니다.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
-              <span className="text-purple-400 text-xs font-bold uppercase tracking-wider block">인간 진영</span>
-              <p className="text-zinc-300 text-xs leading-relaxed">좀비의 감염을 피하고, 치료제를 사용하여 마지막까지 인간으로서 살아남으세요.</p>
+              <span className="text-purple-400 text-xs font-bold uppercase tracking-wider block">비감염자 진영</span>
+              <p className="text-zinc-300 text-xs leading-relaxed">감염자의 감염을 피하고, 치료제를 사용하여 마지막까지 비감염자로서 살아남으세요.</p>
             </div>
             <div className="p-4 rounded-xl bg-green-950/20 border border-green-900/40 space-y-2">
-              <span className="text-green-400 text-xs font-bold uppercase tracking-wider block">좀비 진영</span>
-              <p className="text-green-300 text-xs leading-relaxed font-bold">좀비의 목표: 모든 인간을 감염시키세요.</p>
+              <span className="text-green-400 text-xs font-bold uppercase tracking-wider block">감염자 진영</span>
+              <p className="text-green-300 text-xs leading-relaxed font-bold">감염자의 목표: 모든 비감염자를 감염시키세요.</p>
             </div>
           </div>
           <p className="text-zinc-500 text-[11px] leading-relaxed mt-4">
-            ※ 시작 라운드 시 일부 학생이 무작위로 '최초 좀비'로 선발되며 선발 정보는 교사 화면에서 철저히 관리됩니다.
+            ※ 시작 라운드 시 일부 학생이 무작위로 '최초 감염자'로 선발되며 선발 정보는 교사 화면에서 철저히 관리됩니다.
           </p>
         </div>
       )
@@ -218,7 +219,7 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
           <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-500/30 space-y-2">
             <span className="text-purple-300 text-xs font-black block">💡 라운드 핵심 목표</span>
             <p className="text-zinc-200 text-sm leading-relaxed font-bold">
-              목표: 모든 플레이어는 매 라운드마다 1번 이상 터치를 해야 합니다.<br />터치를 하지 못한 플레이어는 라운드 종료 후 좀비가 됩니다.
+              목표: 모든 플레이어는 매 라운드마다 1번 이상 터치를 해야 합니다.<br />터치를 하지 못한 플레이어는 라운드 종료 후 감염자가 됩니다.
             </p>
           </div>
           
@@ -240,7 +241,7 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
             <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
               <h5 className="text-red-400 text-xs font-bold mb-1">🧪 생존 치료</h5>
               <p className="text-zinc-300 text-[13px] leading-relaxed">
-                해당 라운드에서 감염된 학생은 치료제를 사용하여 다시 인간이 될 수 있습니다.
+                해당 라운드에서 감염된 학생은 치료제를 사용하여 다시 비감염자가 될 수 있습니다.
               </p>
             </div>
             <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
@@ -250,9 +251,9 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
               </p>
             </div>
             <div className="p-3 bg-red-950/20 rounded-lg border border-red-900/40">
-              <h5 className="text-red-300 text-xs font-bold mb-1">⚠️ 최초 좀비 치료 불가</h5>
+              <h5 className="text-red-300 text-xs font-bold mb-1">⚠️ 최초 감염자 치료 불가</h5>
               <p className="text-zinc-300 text-[13px] leading-relaxed">
-                최초 좀비는 치료제를 사용해도 치료되지 않습니다.
+                최초 감염자는 치료제를 사용해도 치료되지 않습니다.
               </p>
             </div>
           </div>
@@ -267,13 +268,13 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
           <div className="p-4 rounded-xl bg-orange-950/20 border border-orange-900/30 space-y-2">
             <h4 className="text-orange-400 font-bold text-sm">무활동 패널티</h4>
             <p className="text-zinc-200 text-xs leading-relaxed font-semibold">
-              매 라운드 제한시간 내에 아무하고도 접촉(터치)하지 않은 인간 플레이어는<br />라운드 종료 시 감염되어 좀비로 변합니다.
+              매 라운드 제한시간 내에 아무하고도 접촉(터치)하지 않은 비감염자 플레이어는<br />라운드 종료 시 감염되어 감염자로 변합니다.
             </p>
           </div>
           <div className="p-4 rounded-xl bg-orange-950/20 border border-orange-900/30 space-y-2">
             <h4 className="text-orange-400 font-bold text-sm">치료제 사용 시 승점 유지 정책</h4>
             <p className="text-zinc-200 text-xs leading-relaxed font-semibold">
-              좀비가 되었다가 치료제를 사용해 인간으로 되돌아 왔을 때<br />기존 인간일 때 가지고 있던 승점은 그대로 유지됩니다.
+              감염자가 되었다가 치료제를 사용해 비감염자로 되돌아 왔을 때<br />기존 비감염자일 때 가지고 있던 승점은 그대로 유지됩니다.
             </p>
           </div>
           <p className="text-zinc-400 text-xs leading-relaxed">
@@ -289,16 +290,16 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="p-3 bg-purple-950/20 border border-purple-900/40 rounded-xl space-y-1">
-              <span className="text-purple-400 text-xs font-bold">인간 진영 승리 조건</span>
+              <span className="text-purple-400 text-xs font-bold">비감염자 진영 승리 조건</span>
               <p className="text-zinc-300 text-xs leading-relaxed">
-                최종 라운드가 마무리되는 시점에 생존한 인간 진영의 플레이어가 단 한 명이라도 존재한다면 승리합니다.
+                최종 라운드가 마무리되는 시점에 생존한 비감염자 진영의 플레이어가 단 한 명이라도 존재한다면 승리합니다.
               </p>
             </div>
             
             <div className="p-3 bg-green-950/20 border border-green-900/40 rounded-xl space-y-1">
-              <span className="text-green-400 text-xs font-bold">좀비 진영 승리 조건</span>
+              <span className="text-green-400 text-xs font-bold">감염자 진영 승리 조건</span>
               <p className="text-zinc-300 text-xs leading-relaxed">
-                교실 내 모든 플레이어가 좀비가 되면 좀비 진영이 승리합니다.
+                교실 내 모든 플레이어가 감염자가 되면 감염자 진영이 승리합니다.
               </p>
             </div>
           </div>
@@ -331,19 +332,22 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
     >
       <Skull className="w-24 h-24 text-green-500 mb-6 animate-pulse" />
       <h1 className="text-6xl font-black mb-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-green-500">
-        ZOMBIE GAME
+        VIRUS GAME
       </h1>
       
       {/* 바뀐 메인 설명 태그라인 */}
       <div className="flex flex-wrap justify-center gap-2 mb-12 max-w-lg">
         <span className="px-3 py-1 bg-purple-950/40 border border-purple-800/50 text-purple-400 text-xs md:text-sm font-semibold rounded-full shadow-lg">
-          #지니어스한 학급 놀이
+          #지니어스 한 학급 놀이
         </span>
         <span className="px-3 py-1 bg-green-950/40 border border-green-800/50 text-green-400 text-xs md:text-sm font-semibold rounded-full shadow-lg">
           #과학 감염병 단원
         </span>
         <span className="px-3 py-1 bg-zinc-900 border border-zinc-700/50 text-zinc-300 text-xs md:text-sm font-semibold rounded-full shadow-lg">
-          #좀비게임
+          #바이러스
+        </span>
+        <span className="px-3 py-1 bg-zinc-900 border border-zinc-700/50 text-zinc-300 text-xs md:text-sm font-semibold rounded-full shadow-lg">
+          #세균
         </span>
       </div>
 
@@ -401,7 +405,7 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
                   <div className="p-2 bg-purple-950/50 border border-purple-800/30 rounded-xl">
                     <BookOpen className="w-6 h-6 text-purple-400" />
                   </div>
-                  <h2 className="text-xl font-bold text-white tracking-tight">지니어스 좀비게임 사용 설명서</h2>
+                  <h2 className="text-xl font-bold text-white tracking-tight">지니어스 바이러스 게임 사용 설명서</h2>
                 </div>
                 <button 
                   onClick={() => setIsGuideOpen(false)}
@@ -647,10 +651,10 @@ const SetupZombiesView = React.memo(({
       <Card>
         <div className="flex items-center gap-3 mb-8">
           <Skull className="text-green-500" />
-          <h2 className="text-2xl font-bold">최초 좀비 지목</h2>
+          <h2 className="text-2xl font-bold">최초 감염자 지목</h2>
         </div>
 
-        <p className="text-zinc-400 mb-6">최초 좀비로 활동할 학생들을 선택하세요.</p>
+        <p className="text-zinc-400 mb-6">최초 감염자로 활동할 학생들을 선택하세요.</p>
 
         <div className="overflow-y-auto max-h-[400px] pr-2">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -672,7 +676,7 @@ const SetupZombiesView = React.memo(({
         </div>
 
         <div className="mt-12 flex justify-between items-center">
-          <p className="text-zinc-500">좀비: {zombieCount}명 / 인간: {students.length - zombieCount}명</p>
+          <p className="text-zinc-500">감염자: {zombieCount}명 / 비감염자: {students.length - zombieCount}명</p>
           <div className="flex gap-3">
             <Button onClick={onBack} variant="secondary">
               <ChevronLeft className="w-5 h-5 mr-1" /> 이전
@@ -797,12 +801,12 @@ const GameView = React.memo(({
 
         <div className="flex gap-4 items-center">
           <div className="text-center">
-            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">좀비</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">감염자</p>
             <p className="text-2xl font-black text-green-500">?</p>
           </div>
           <div className="w-px h-10 bg-zinc-800" />
           <div className="text-center">
-            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">인간</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-1">비감염자</p>
             <p className="text-2xl font-black text-white">?</p>
           </div>
         </div>
@@ -964,15 +968,15 @@ const GameView = React.memo(({
             <h2 className="text-3xl font-black mb-4">ROUND {currentRound} 종료</h2>
             <div className="flex justify-center gap-8 mb-8">
               <div className="text-center">
-                <p className="text-xs text-zinc-500 uppercase mb-1">좀비 수</p>
+                <p className="text-xs text-zinc-500 uppercase mb-1">감염자 수</p>
                 <p className="text-3xl font-black text-green-500">{students.filter(s => s.isZombie || !s.touchedThisRound).length}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-zinc-500 uppercase mb-1">인간 수</p>
+                <p className="text-xs text-zinc-500 uppercase mb-1">비감염자 수</p>
                 <p className="text-3xl font-black text-white">{students.filter(s => !s.isZombie && s.touchedThisRound).length}</p>
               </div>
             </div>
-            <p className="text-zinc-400 mb-8">터치하지 않은 학생은 좀비가 되었습니다.</p>
+            <p className="text-zinc-400 mb-8">터치하지 않은 학생은 감염자가 되었습니다.</p>
             <Button size="lg" className="w-full" onClick={onNextRound}>
               {currentRound === config.totalRounds ? '결과 보기' : '다음 라운드 시작'} <ChevronRight className="w-5 h-5" />
             </Button>
@@ -1045,12 +1049,12 @@ const ResultsView = React.memo(({
         <div className={`p-12 rounded-3xl border-4 transition-all duration-500 ${winner === 'ZOMBIE' ? 'border-green-500 bg-green-500/10 scale-110' : 'border-zinc-800'}`}>
           <Skull className={`w-16 h-16 mx-auto mb-4 ${winner === 'ZOMBIE' ? 'text-green-500' : 'text-zinc-700'}`} />
           <p className="text-7xl font-black mb-2">{zombieCount}</p>
-          <p className="text-xl font-bold text-zinc-500">좀비 진영</p>
+          <p className="text-xl font-bold text-zinc-500">감염자 진영</p>
         </div>
         <div className={`p-12 rounded-3xl border-4 transition-all duration-500 ${winner === 'HUMAN' ? 'border-purple-500 bg-purple-500/10 scale-110' : 'border-zinc-800'}`}>
           <Users className={`w-16 h-16 mx-auto mb-4 ${winner === 'HUMAN' ? 'text-purple-500' : 'text-zinc-700'}`} />
           <p className="text-7xl font-black mb-2">{humanCount}</p>
-          <p className="text-xl font-bold text-zinc-500">인간 진영</p>
+          <p className="text-xl font-bold text-zinc-500">비감염자 진영</p>
         </div>
       </div>
 
@@ -1060,12 +1064,12 @@ const ResultsView = React.memo(({
           animate={{ scale: 1, opacity: 1 }}
         >
           <h1 className={`text-8xl font-black mb-8 tracking-tighter ${winner === 'ZOMBIE' ? 'text-green-500' : 'text-purple-500'}`}>
-            {winner === 'ZOMBIE' ? 'ZOMBIE WIN' : 'HUMAN WIN'}
+            {winner === 'ZOMBIE' ? '감염자 승리' : '비감염자 승리'}
           </h1>
 
           {winner === 'HUMAN' && (
             <div className="max-w-2xl mx-auto mb-12">
-              <h3 className="text-xl font-bold mb-4 text-zinc-400">개별 승점 순위 (인간만 표시)</h3>
+              <h3 className="text-xl font-bold mb-4 text-zinc-400">개별 승점 순위 (비감염자만 표시)</h3>
               <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-2">
                 {students
                   .filter(s => !s.isZombie)
@@ -1114,6 +1118,7 @@ export default function App() {
   const [logs, setLogs] = useState<GameLog[]>([]);
   const [confirmCureId, setConfirmCureId] = useState<string | null>(null);
   const [touchHistory, setTouchHistory] = useState<string[]>([]);
+  const [isIntroOpen, setIsIntroOpen] = useState(false);
 
   // --- Logic Handlers ---
 
@@ -1161,7 +1166,7 @@ export default function App() {
     setStudents(prev => {
       if (currentRound === 1) {
         const initialZombies = prev.filter(s => s.isZombie).map(s => s.name).join(', ');
-        addLog(`게임 시작! 최초 좀비: ${initialZombies}`, 'GAME_START');
+        addLog(`게임 시작! 최초 감염자: ${initialZombies}`, 'GAME_START');
       }
       return prev;
     });
@@ -1203,12 +1208,12 @@ export default function App() {
         }
         return s;
       }));
-      logMsg = `${s1.name}와(과) ${s2.name} 터치! ${s1.isZombie && s2.isZombie ? '좀비 접촉' : '감염 발생'} (승점 없음)`;
+      logMsg = `${s1.name}와(과) ${s2.name} 터치! ${s1.isZombie && s2.isZombie ? '감염자 접촉' : '감염 발생'} (승점 없음)`;
       addLog(logMsg, 'TOUCH', {
         student1: s1.name,
-        status1: s1.isZombie ? '좀비' : '인간',
+        status1: s1.isZombie ? '감염자' : '비감염자',
         student2: s2.name,
-        status2: s2.isZombie ? '좀비' : '인간',
+        status2: s2.isZombie ? '감염자' : '비감염자',
         pointsAwarded: 0,
         cumulativePoints: 0,
         isOriginalZombie: s1.isOriginalZombie,
@@ -1225,9 +1230,9 @@ export default function App() {
       logMsg = `${s1.name}와(과) ${s2.name} 터치! 안전 (+1점)`;
       addLog(logMsg, 'TOUCH', {
         student1: s1.name,
-        status1: '인간',
+        status1: '비감염자',
         student2: s2.name,
-        status2: '인간',
+        status2: '비감염자',
         pointsAwarded: 1,
         cumulativePoints: s1.points + 1,
         isOriginalZombie: s1.isOriginalZombie,
@@ -1252,9 +1257,9 @@ export default function App() {
       return s;
     }));
 
-    addLog(`${student.name} 치료제 사용! ${wasInfected ? '인간으로 복구' : '변화 없음'}`, 'CURE', {
+    addLog(`${student.name} 치료제 사용! ${wasInfected ? '비감염자로 복구' : '변화 없음'}`, 'CURE', {
       student1: student.name,
-      status1: '인간',
+      status1: '비감염자',
       pointsAwarded: 0,
       cumulativePoints: student.points,
       isOriginalZombie: student.isOriginalZombie,
@@ -1266,7 +1271,7 @@ export default function App() {
   }, [students, addLog]);
 
   const exportToExcel = React.useCallback(() => {
-    const headers = ['라운드', '터치1(학생명)', '상태', '터치 2(학생명)', '상태', '승점', '누적승점', '최초좀비여부', '백신 사용 여부', '메시지', '시간'];
+    const headers = ['라운드', '터치1(학생명)', '상태', '터치 2(학생명)', '상태', '승점', '누적승점', '최초감염자여부', '백신 사용 여부', '메시지', '시간'];
     const data = logs.map(l => [
       l.round,
       l.student1 || '-',
@@ -1286,7 +1291,7 @@ export default function App() {
 
     XLSX.utils.book_append_sheet(wb, wsLogs, "게임 로그");
 
-    XLSX.writeFile(wb, `좀비게임_결과_${new Date().toLocaleDateString()}.xlsx`);
+    XLSX.writeFile(wb, `바이러스게임_결과_${new Date().toLocaleDateString()}.xlsx`);
   }, [logs]);
 
   const nextRound = React.useCallback(() => {
@@ -1322,7 +1327,11 @@ export default function App() {
   }, [currentRound, addLog, config.totalRounds, config.roundTime, students]);
 
   // --- View Navigation Handlers ---
-  const handleStart = React.useCallback(() => setView('SETUP_CONFIG'), []);
+  const handleStart = React.useCallback(() => setIsIntroOpen(true), []);
+  const handleIntroStartGame = React.useCallback(() => {
+    setIsIntroOpen(false);
+    setView('SETUP_CONFIG');
+  }, []);
   const handleConfigNext = React.useCallback((newConfig: GameConfig) => {
     setConfig(newConfig);
     setView('SETUP_STUDENTS');
@@ -1544,6 +1553,13 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Intro Story Modal */}
+      <IntroStoryModal 
+        isOpen={isIntroOpen} 
+        onClose={() => setIsIntroOpen(false)} 
+        onStartGame={handleIntroStartGame} 
+      />
     </div>
   );
 }
