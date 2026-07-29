@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, CheckCircle2, Sparkles, AlertTriangle, X, Volume2, VolumeX, RotateCcw } from 'lucide-react';
+import { ChevronRight, CheckCircle2, Sparkles, AlertTriangle, X, Volume2, VolumeX, RotateCcw, FastForward } from 'lucide-react';
 
 // Import local images from assets
 import backBg from '../assets/images/back_bg_1784754202433.jpg';
@@ -392,17 +392,25 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
         }`} />
 
         {/* Top Control Bar */}
-        <div className="absolute top-4 right-4 z-[220] flex items-center gap-3">
+        <div className="absolute top-4 right-4 z-[220] flex items-center gap-2 md:gap-3">
+          <button
+            onClick={onStartGame}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-purple-600/80 hover:bg-purple-600 border border-purple-400/50 text-white text-xs md:text-sm font-bold shadow-lg shadow-purple-500/30 hover:scale-105 active:scale-95 transition-all backdrop-blur-md"
+            title="인터뷰/스토리 건너뛰고 바로 게임 시작"
+          >
+            <span>건너뛰기</span>
+            <FastForward className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setSoundEnabled((prev) => !prev)}
-            className="p-3 rounded-full bg-black/60 border border-white/20 text-zinc-300 hover:text-white hover:bg-black/80 transition-all backdrop-blur-md"
+            className="p-2.5 md:p-3 rounded-full bg-black/60 border border-white/20 text-zinc-300 hover:text-white hover:bg-black/80 transition-all backdrop-blur-md"
             title={soundEnabled ? "음소거" : "음성 켜기"}
           >
             {soundEnabled ? <Volume2 className="w-5 h-5 text-green-400" /> : <VolumeX className="w-5 h-5 text-zinc-500" />}
           </button>
           <button
             onClick={onClose}
-            className="p-3 rounded-full bg-black/60 border border-white/20 text-zinc-300 hover:text-white hover:bg-black/80 transition-all backdrop-blur-md"
+            className="p-2.5 md:p-3 rounded-full bg-black/60 border border-white/20 text-zinc-300 hover:text-white hover:bg-black/80 transition-all backdrop-blur-md"
             title="닫기"
           >
             <X className="w-5 h-5" />
