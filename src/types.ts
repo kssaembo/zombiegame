@@ -17,11 +17,17 @@ export interface GameLog {
   // New fields for detailed Excel export
   student1?: string;
   status1?: string;
+  student1Id?: string;
+  beforeStatus1?: string;
   student2?: string;
   status2?: string;
+  student2Id?: string;
+  beforeStatus2?: string;
   pointsAwarded?: number;
   cumulativePoints?: number;
+  cumulativePoints2?: number;
   isOriginalZombie?: boolean;
+  isOriginalZombie2?: boolean;
   vaccineUsed?: boolean;
 }
 

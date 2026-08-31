@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { 
@@ -28,6 +28,11 @@ import {
 } from 'lucide-react';
 import { Student, GameState, GameConfig, GameLog } from './types';
 import { IntroStoryModal } from './components/IntroStoryModal';
+import { isValidRoundTime, resolveTouch, resolveCure, resolveRoundEnd, logRows, statusOf, type LogEntry } from './game/rules';
+import { loadSave, writeSave, clearSave, type SavedGame } from './game/storage';
+import { createId } from './game/id';
+import { SceneBackground } from './components/SceneBackground';
+import { BackgroundMusic } from './components/BackgroundMusic';
 
 // --- Utility Components ---
 
@@ -162,7 +167,7 @@ const TeacherPage = React.memo(({
                         }`}>
                           {log.type}
                         </span>
-                        <span className="text-[10px] text-zinc-600">{log.timestamp}</span>
+                        <span className="text-[10px] text-zinc-600">{new Date(log.timestamp).toLocaleTimeString()}</span>
                       </div>
                       <p className="text-zinc-300 leading-tight">
                         <span className="text-zinc-500 mr-1">R{log.round}</span>
@@ -491,7 +496,8 @@ const SetupConfigView = React.memo(({
   onNext: (newConfig: GameConfig) => void;
   onBack: () => void;
 }) => {
-  const [localRoundTime, setLocalRoundTime] = useState(config.roundTime);
+  const [localRoundTime, setLocalRoundTime] = useState(String(config.roundTime));
+  const validTime = isValidRoundTime(Number(localRoundTime));
 
   return (
     <motion.div 
@@ -509,11 +515,12 @@ const SetupConfigView = React.memo(({
           <div>
             <label className="block text-sm font-medium text-zinc-400 mb-2">라운드당 제한 시간 (초)</label>
             <input 
-              type="number" 
+              type="number" min="1" step="1" aria-label="라운드당 제한 시간 (초)" aria-invalid={!validTime} aria-describedby="round-time-error"
               value={localRoundTime}
-              onChange={(e) => setLocalRoundTime(parseInt(e.target.value) || 0)}
+              onChange={(e) => setLocalRoundTime(e.target.value)}
               className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
+            {!validTime && <p id="round-time-error" role="alert" className="mt-2 text-red-400 text-sm">제한 시간은 1초 이상의 정수로 입력해주세요.</p>}
             <div className="mt-2.5 p-3.5 bg-purple-950/30 border border-purple-500/30 rounded-xl text-xs md:text-sm text-purple-200 leading-relaxed space-y-1">
               <p className="flex items-start gap-1.5">
                 <span className="text-purple-400 font-bold shrink-0">💡</span>
@@ -534,7 +541,7 @@ const SetupConfigView = React.memo(({
           <Button onClick={onBack} variant="secondary">
             <ChevronLeft className="w-5 h-5 mr-1" /> 이전
           </Button>
-          <Button onClick={() => onNext({ roundTime: localRoundTime, totalRounds: 3 })}>
+          <Button disabled={!validTime} onClick={() => onNext({ roundTime: Number(localRoundTime), totalRounds: 3 })}>
             다음 단계 <ChevronRight className="w-5 h-5" />
           </Button>
         </div>
@@ -1014,10 +1021,12 @@ const GameView = React.memo(({
 
 const ResultsView = React.memo(({ 
   students, 
-  onExport 
-}: { 
-  students: Student[]; 
-  onExport: () => void 
+  onExport,
+  onRestart,
+}: {
+  students: Student[];
+  onExport: () => void;
+  onRestart: () => void;
 }) => {
   const [zombieCount, setZombieCount] = useState(0);
   const [humanCount, setHumanCount] = useState(0);
@@ -1104,7 +1113,7 @@ const ResultsView = React.memo(({
             <Button size="lg" variant="secondary" onClick={onExport}>
               <FileSpreadsheet className="w-6 h-6" /> 결과 엑셀 다운로드
             </Button>
-            <Button size="lg" variant="secondary" onClick={() => window.location.reload()}>
+            <Button size="lg" variant="secondary" onClick={onRestart}>
               <RotateCcw className="w-6 h-6" /> 처음으로 돌아가기
             </Button>
           </div>
@@ -1117,6 +1126,10 @@ const ResultsView = React.memo(({
 // --- Main Application ---
 
 export default function App() {
+  const [initialSave] = useState(loadSave);
+  const [savedGame, setSavedGame] = useState(initialSave.game);
+  const [saveError, setSaveError] = useState(initialSave.error);
+  const [persistenceEnabled, setPersistenceEnabled] = useState(false);
   const [view, setView] = useState<GameState>('START');
   const [students, setStudents] = useState<Student[]>([]);
   const [config, setConfig] = useState<GameConfig>({ roundTime: 120, totalRounds: 3 });
@@ -1129,6 +1142,7 @@ export default function App() {
     message: string; 
     type: 'info' | 'success' | 'warning';
     onConfirm?: () => void;
+    onCancel?: () => void;
   } | null>(null);
   const [showTeacherPage, setShowTeacherPage] = useState(false);
   const [logs, setLogs] = useState<GameLog[]>([]);
@@ -1138,34 +1152,9 @@ export default function App() {
 
   // --- Logic Handlers ---
 
-  const addLog = React.useCallback((
-    message: string, 
-    type: GameLog['type'],
-    details?: Partial<GameLog>
-  ) => {
-    const newLog: GameLog = {
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toLocaleTimeString(),
-      round: currentRound,
-      message,
-      type,
-      ...details
-    };
-    setLogs(prev => [newLog, ...prev]);
-  }, [currentRound]);
-
-  const addStudent = React.useCallback((name: string) => {
-    if (!name.trim()) return;
-    const newStudent: Student = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: name.trim(),
-      isZombie: false,
-      isOriginalZombie: false,
-      infectedThisRound: false,
-      points: 0,
-      touchedThisRound: false,
-    };
-    setStudents(prev => [...prev, newStudent]);
+  const appendLogs = React.useCallback((entries: LogEntry[]) => {
+    const additions = entries.map(entry => ({ ...entry, id: createId(), timestamp: new Date().toISOString() })).reverse();
+    setLogs(prev => [...additions, ...prev]);
   }, []);
 
   const removeStudent = React.useCallback((id: string) => {
@@ -1179,182 +1168,117 @@ export default function App() {
   }, []);
 
   const startRound = React.useCallback(() => {
-    setStudents(prev => {
-      if (currentRound === 1) {
-        const initialZombies = prev.filter(s => s.isZombie).map(s => s.name).join(', ');
-        addLog(`게임 시작! 최초 감염자: ${initialZombies}`, 'GAME_START');
-      }
-      return prev;
-    });
-    addLog(`${currentRound}라운드 시작!`, 'ROUND_START');
+    if (!isValidRoundTime(config.roundTime) || students.length < 2 || !students.some(s => s.isZombie)) return;
+    const entries: LogEntry[] = [];
+    if (currentRound === 1) entries.push({ round: 1, type: 'GAME_START', message: `게임 시작! 최초 감염자: ${students.filter(s => s.isZombie).map(s => s.name).join(', ')}` });
+    entries.push({ round: currentRound, type: 'ROUND_START', message: `${currentRound}라운드 시작!` });
+    appendLogs(entries);
     setTimeLeft(config.roundTime);
     setIsTimerRunning(true);
     setView('GAME');
-  }, [currentRound, addLog, config.roundTime]);
+  }, [students, currentRound, appendLogs, config.roundTime]);
 
   const handleTouch = React.useCallback(() => {
-    if (selectedIds.length !== 2) return;
-    
-    const [id1, id2] = selectedIds;
-    
-    // Check for duplicate touch
-    const pairId = [id1, id2].sort().join('-');
-    if (touchHistory.includes(pairId)) {
-      setModal({ title: '터치 불가', message: '이미 접촉을 완료했습니다.', type: 'warning' });
-      setSelectedIds([]);
+    if (!isTimerRunning || timeLeft <= 0) return;
+    const result = resolveTouch(students, selectedIds, touchHistory, currentRound);
+    setSelectedIds([]);
+    if ('error' in result) {
+      setModal({ title: '터치 불가', message: result.error, type: 'warning' });
       return;
     }
-
-    const s1 = students.find(s => s.id === id1)!;
-    const s2 = students.find(s => s.id === id2)!;
-
-    let infectionOccurred = false;
-    let logMsg = "";
-
-    if (s1.isZombie || s2.isZombie) {
-      // Zombie touch
-      setStudents(prev => prev.map(s => {
-        if (s.id === id1 || s.id === id2) {
-          const updated = { ...s, touchedThisRound: true };
-          if (!s.isZombie) {
-            infectionOccurred = true;
-            return { ...updated, isZombie: true, infectedThisRound: true };
-          }
-          return updated;
-        }
-        return s;
-      }));
-      logMsg = `${s1.name}와(과) ${s2.name} 터치! ${s1.isZombie && s2.isZombie ? '감염자 접촉' : '감염 발생'} (승점 없음)`;
-      addLog(logMsg, 'TOUCH', {
-        student1: s1.name,
-        status1: s1.isZombie ? '감염자' : '비감염자',
-        student2: s2.name,
-        status2: s2.isZombie ? '감염자' : '비감염자',
-        pointsAwarded: 0,
-        cumulativePoints: 0,
-        isOriginalZombie: s1.isOriginalZombie,
-        vaccineUsed: false
-      });
-    } else {
-      // Human-Human touch
-      setStudents(prev => prev.map(s => {
-        if (s.id === id1 || s.id === id2) {
-          return { ...s, touchedThisRound: true, points: s.points + 1 };
-        }
-        return s;
-      }));
-      logMsg = `${s1.name}와(과) ${s2.name} 터치! 안전 (+1점)`;
-      addLog(logMsg, 'TOUCH', {
-        student1: s1.name,
-        status1: '비감염자',
-        student2: s2.name,
-        status2: '비감염자',
-        pointsAwarded: 1,
-        cumulativePoints: s1.points + 1,
-        isOriginalZombie: s1.isOriginalZombie,
-        vaccineUsed: false
-      });
-    }
-    
-    setTouchHistory(prev => [...prev, pairId]);
-    setSelectedIds([]);
-  }, [selectedIds, students, addLog, touchHistory]);
+    setStudents(result.students);
+    setTouchHistory(prev => [...prev, result.pairId]);
+    appendLogs([result.log]);
+  }, [isTimerRunning, timeLeft, students, selectedIds, touchHistory, currentRound, appendLogs]);
 
   const handleCure = React.useCallback((id: string) => {
-    const student = students.find(s => s.id === id);
-    if (!student) return;
-
-    const wasInfected = student.infectedThisRound;
-
-    setStudents(prev => prev.map(s => {
-      if (s.id === id && s.infectedThisRound) {
-        return { ...s, isZombie: false, infectedThisRound: false };
-      }
-      return s;
-    }));
-
-    addLog(`${student.name} 치료제 사용! ${wasInfected ? '비감염자로 복구' : '변화 없음'}`, 'CURE', {
-      student1: student.name,
-      status1: '비감염자',
-      pointsAwarded: 0,
-      cumulativePoints: student.points,
-      isOriginalZombie: student.isOriginalZombie,
-      vaccineUsed: true
-    });
-    setModal({ title: '치료 완료', message: '치료제를 사용하였습니다.', type: 'success' });
+    if (!isTimerRunning || timeLeft <= 0) { setConfirmCureId(null); return; }
+    const result = resolveCure(students, id, currentRound);
+    if (!result) return;
+    setStudents(result.students);
+    appendLogs([result.log]);
+    setModal({ title: '치료제 사용', message: '치료제를 사용하였습니다.', type: 'success' });
     setConfirmCureId(null);
     setSelectedIds([]);
-  }, [students, addLog]);
+  }, [isTimerRunning, timeLeft, students, currentRound, appendLogs]);
 
   const exportToExcel = React.useCallback(() => {
-    const headers = ['라운드', '터치1(학생명)', '상태', '터치 2(학생명)', '상태', '승점', '누적승점', '최초감염자여부', '백신 사용 여부', '메시지', '시간'];
-    const data = logs.map(l => [
-      l.round,
-      l.student1 || '-',
-      l.status1 || '-',
-      l.student2 || '-',
-      l.status2 || '-',
-      l.pointsAwarded ?? 0,
-      l.cumulativePoints ?? 0,
-      l.isOriginalZombie ? 'O' : 'X',
-      l.vaccineUsed ? 'O' : 'X',
-      l.message,
-      l.timestamp
-    ]);
-
     const wb = XLSX.utils.book_new();
-    const wsLogs = XLSX.utils.aoa_to_sheet([headers, ...data]);
-
-    XLSX.utils.book_append_sheet(wb, wsLogs, "게임 로그");
-
-    XLSX.writeFile(wb, `바이러스게임_결과_${new Date().toLocaleDateString()}.xlsx`);
-  }, [logs]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(logRows(logs)), '게임 로그');
+    const summary = [
+      ['학생 ID', '학생명', '현재 상태', '누적승점', '최초감염자', '현재 라운드'],
+      ...students.map(s => [s.id, s.name, statusOf(s), s.points, s.isOriginalZombie ? 'O' : 'X', currentRound]),
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), '학생 현황');
+    XLSX.writeFile(wb, `바이러스게임_결과_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }, [logs, students, currentRound]);
 
   const nextRound = React.useCallback(() => {
-    addLog(`${currentRound}라운드 종료`, 'ROUND_END');
-    
-    setStudents(prev => {
-      return prev.map(s => {
-        let isZombie = s.isZombie;
-        if (!s.touchedThisRound) {
-          isZombie = true;
-        }
-        return { 
-          ...s, 
-          isZombie,
-          infectedThisRound: false, 
-          touchedThisRound: false 
-        };
-      });
-    });
-
-    const survivors = students.filter(s => !s.isZombie && !s.touchedThisRound);
-    if (survivors.length > 0) {
-      addLog(`활동 부족으로 인한 감염: ${survivors.map(s => s.name).join(', ')}`, 'INFECTION');
-    }
-
-    if (currentRound < config.totalRounds) {
-      setCurrentRound(prev => prev + 1);
+    if (isTimerRunning || timeLeft !== 0) return;
+    const result = resolveRoundEnd(students, currentRound, config.totalRounds);
+    setStudents(result.students);
+    appendLogs(result.logs);
+    setSelectedIds([]);
+    setConfirmCureId(null);
+    setCurrentRound(result.round);
+    if (!result.finished) {
       setTimeLeft(config.roundTime);
       setIsTimerRunning(true);
     } else {
+      setIsTimerRunning(false);
       setView('RESULTS');
     }
-  }, [currentRound, addLog, config.totalRounds, config.roundTime, students]);
+  }, [isTimerRunning, timeLeft, students, currentRound, config, appendLogs]);
 
   // --- View Navigation Handlers ---
-  const handleStart = React.useCallback(() => setIsIntroOpen(true), []);
+  const handleStart = React.useCallback(() => {
+    if (savedGame) {
+      setModal({ title: '새 게임 시작', message: '저장된 게임을 지우고 새 게임을 시작하시겠습니까?', type: 'warning', onConfirm: () => {
+        setSaveError(clearSave());
+        setSavedGame(null);
+        setStudents([]);
+        setLogs([]);
+        setTouchHistory([]);
+        setCurrentRound(1);
+        setTimeLeft(0);
+        setIsTimerRunning(false);
+        setPersistenceEnabled(false);
+        setIsIntroOpen(true);
+      } });
+    } else setIsIntroOpen(true);
+  }, [savedGame]);
+  const handleResume = React.useCallback(() => {
+    if (!savedGame) return;
+    setStudents(savedGame.students);
+    setConfig(savedGame.config);
+    setCurrentRound(savedGame.currentRound);
+    setTimeLeft(savedGame.timeLeft);
+    setLogs(savedGame.logs);
+    setTouchHistory(savedGame.touchHistory);
+    setView(savedGame.view);
+    setIsTimerRunning(false);
+    setSelectedIds([]);
+    setConfirmCureId(null);
+    setShowTeacherPage(false);
+    setPersistenceEnabled(true);
+    setSavedGame(null);
+  }, [savedGame]);
   const handleIntroStartGame = React.useCallback(() => {
     setIsIntroOpen(false);
     setView('SETUP_CONFIG');
+    setPersistenceEnabled(true);
   }, []);
   const handleConfigNext = React.useCallback((newConfig: GameConfig) => {
+    if (!isValidRoundTime(newConfig.roundTime)) {
+      setModal({ title: '시간 설정 오류', message: '제한 시간은 1초 이상의 정수로 입력해주세요.', type: 'warning' });
+      return;
+    }
     setConfig(newConfig);
     setView('SETUP_STUDENTS');
   }, []);
   const handleStudentsAdd = React.useCallback((names: string[]) => {
     const newStudents: Student[] = names.map(name => ({
-      id: Math.random().toString(36).substr(2, 9),
+      id: createId(),
       name,
       isZombie: false,
       isOriginalZombie: false,
@@ -1376,31 +1300,26 @@ export default function App() {
     });
   }, []);
   const handleCureRequest = React.useCallback((id: string) => {
-    setStudents(prev => {
-      const student = prev.find(s => s.id === id);
-      if (student) {
-        setConfirmCureId(student.id);
-      }
-      return prev;
-    });
-  }, []);
+    if (students.some(s => s.id === id)) setConfirmCureId(id);
+  }, [students]);
   const handleShowTeacherPage = React.useCallback(() => setShowTeacherPage(true), []);
   const handleCloseTeacherPage = React.useCallback(() => setShowTeacherPage(false), []);
   const handleConfirmCureCancel = React.useCallback(() => setConfirmCureId(null), []);
   const handleClearAll = React.useCallback(() => setStudents([]), []);
 
   const handleToggleTimer = React.useCallback(() => {
-    setIsTimerRunning(prev => !prev);
-  }, []);
+    if (timeLeft > 0) setIsTimerRunning(prev => !prev);
+  }, [timeLeft]);
 
   const handleAddSeconds = React.useCallback(() => {
-    setTimeLeft(prev => prev + 10);
+    setTimeLeft(prev => Number.isSafeInteger(prev + 10) ? prev + 10 : prev);
   }, []);
 
   const handleRoundEndRequest = React.useCallback(() => {
     setIsTimerRunning(false);
     setModal({
       title: '라운드 종료 확인',
+      onCancel: () => setIsTimerRunning(isTimerRunning && timeLeft > 0),
       message: '해당 라운드를 종료하시겠습니까? 확인을 누르면 감염 여부가 확정되고 라운드 결과 정산 및 다음 단계로 이동합니다.',
       type: 'warning',
       onConfirm: () => {
@@ -1408,9 +1327,16 @@ export default function App() {
         setTimeLeft(0);
       }
     });
-  }, []);
+  }, [isTimerRunning, timeLeft]);
 
   const handleForceEnd = React.useCallback(() => {
+    setPersistenceEnabled(false);
+    setSaveError(clearSave());
+    setSavedGame(null);
+    setTimeLeft(0);
+    setModal(null);
+    setConfirmCureId(null);
+    setShowTeacherPage(false);
     setView('START');
     setIsTimerRunning(false);
     setCurrentRound(1);
@@ -1427,15 +1353,23 @@ export default function App() {
     })));
   }, []);
 
+  // Restore is always paused: time away from the classroom does not consume a round.
+  useEffect(() => {
+    if (!persistenceEnabled || view === 'START') return;
+    const game: SavedGame = { version: 1, savedAt: new Date().toISOString(), view, students, config, currentRound, timeLeft, logs, touchHistory };
+    setSaveError(writeSave(game));
+  }, [persistenceEnabled, view, students, config, currentRound, timeLeft, logs, touchHistory]);
+
   // --- Timer Effect ---
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (isTimerRunning && timeLeft > 0) {
       timer = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
+        setTimeLeft(prev => Math.max(0, prev - 1));
       }, 1000);
     } else if (timeLeft === 0 && isTimerRunning) {
       setIsTimerRunning(false);
+      setConfirmCureId(null);
       setModal({ 
         title: '라운드 종료', 
         message: '시간이 모두 경과했습니다. 해당 라운드 결과를 정산합니다.', 
@@ -1449,13 +1383,20 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-black text-white font-sans selection:bg-purple-500/30">
-      {/* Background Glow */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-900/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-green-900/10 blur-[120px] rounded-full" />
-      </div>
+      <SceneBackground view={view} humanSurvived={students.some(student => !student.isZombie)} />
 
       <main className="relative z-10 container mx-auto px-4 py-8 pb-64">
+        <BackgroundMusic view={view} isTimerRunning={isTimerRunning} />
+        {saveError && <div role="alert" className="max-w-4xl mx-auto mb-4 rounded-xl border border-amber-500 p-4 text-amber-200">{saveError}</div>}
+        {view === 'START' && savedGame && (
+          <Card className="max-w-2xl mx-auto mb-6">
+            <h2 className="text-xl font-bold mb-2">저장된 게임이 있습니다</h2>
+            <p className="text-zinc-400 mb-4">{new Date(savedGame.savedAt).toLocaleString()} · {savedGame.students.length}명 · {savedGame.view === 'GAME' ? `${savedGame.currentRound}라운드` : savedGame.view === 'RESULTS' ? '최종 결과' : '게임 설정 중'}</p>
+            <Button onClick={handleResume}>이어하기</Button>
+            <p className="text-sm text-zinc-400 mt-3">진행 중이던 게임은 일시정지 상태로 복구됩니다. 확인 후 타이머 시작을 눌러주세요.</p>
+          </Card>
+        )}
+        {persistenceEnabled && !saveError && <p className="text-center text-xs text-zinc-500 mb-4">이 브라우저에 자동 저장 중 · 이어하기 시 타이머는 일시정지로 복구됩니다.</p>}
         <AnimatePresence mode="wait">
           {view === 'START' && <StartView key="start" onStart={handleStart} />}
           {view === 'SETUP_CONFIG' && (
@@ -1463,7 +1404,13 @@ export default function App() {
               key="setup-config" 
               config={config} 
               onNext={handleConfigNext} 
-              onBack={() => setView('START')}
+              onBack={() => {
+                const saved = loadSave();
+                setSavedGame(saved.game);
+                setSaveError(saved.error);
+                setPersistenceEnabled(false);
+                setView('START');
+              }}
             />
           )}
           {view === 'SETUP_STUDENTS' && (
@@ -1515,6 +1462,7 @@ export default function App() {
           )}
           {view === 'RESULTS' && (
             <ResultsView 
+              onRestart={() => { handleForceEnd(); setStudents([]); }}
               key="results" 
               students={students}
               onExport={exportToExcel}
@@ -1550,7 +1498,7 @@ export default function App() {
               <p className="text-zinc-400 mb-6 text-sm leading-relaxed">{modal.message}</p>
               <div className="flex gap-3">
                 {modal.onConfirm && (
-                  <Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>취소</Button>
+                  <Button variant="secondary" className="flex-1" onClick={() => { modal.onCancel?.(); setModal(null); }}>취소</Button>
                 )}
                 <Button 
                   className="flex-1" 

@@ -1,20 +1,43 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 바이러스 게임 관리
 
-# Run and deploy your AI Studio app
+React + TypeScript + Vite 기반의 교실용 게임입니다. 서버, API 키, 환경변수 설정 없이 실행할 수 있습니다.
 
-This contains everything you need to run your app locally.
+```sh
+npm install
+npm run dev
+```
 
-View your app in AI Studio: https://ai.studio/apps/3de09a78-8231-4e09-b6f2-1e41af6ea025
+- `npm run lint`: TypeScript 검사
+- `npm test`: 게임 판정·저장·오디오 회귀 테스트
+- `npm run build`: 배포용 `dist` 생성
 
-## Run Locally
+## 자동 저장과 이어하기
 
-**Prerequisites:**  Node.js
+설정 완료 항목과 진행 상태(학생, 점수, 감염 상태, 라운드, 남은 시간, 접촉 이력, 로그)는 같은 브라우저의 localStorage에 자동 저장됩니다. 제한 시간 입력은 ‘다음 단계’를 눌렀을 때 확정됩니다. 새로고침 후 시작 화면의 **이어하기**를 누르면 복구됩니다. 게임은 항상 일시정지 상태로 복구되며, 창을 닫아 둔 시간은 차감하지 않습니다. 마지막 타이머 저장 시점 기준 최대 약 1초 차이가 있을 수 있습니다.
 
+저장된 게임이 있을 때 새 게임을 시작하면 교체 확인을 받습니다. 강제 종료 또는 결과 화면의 ‘처음으로 돌아가기’는 저장 기록을 삭제합니다. 저장 실패는 화면에 표시됩니다. 저장 데이터가 손상되었으면 복구하지 않고 경고를 표시합니다.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+다른 기기·브라우저·주소로 자동 동기화되지 않습니다. 공용 기기에는 학생 이름과 게임 기록이 남으므로 사용 후 게임을 종료하세요. 시크릿 모드 종료나 브라우저 데이터 삭제 시 저장이 사라질 수 있습니다.
+
+## 게임 규칙과 로그
+
+- 치료제 반복 사용과 교사 화면의 자유로운 접근은 기존 운영 의도대로 유지합니다.
+- `src/game/rules.ts`는 접촉·치료·라운드 정산을 부작용 없는 함수로 처리합니다.
+- 로그는 처리 전/후 상태와 두 학생의 누적 승점을 각각 저장합니다. 엑셀은 시간순 게임 로그와 학생 현황 시트를 제공합니다.
+- 제한 시간은 1초 이상의 정수만 허용합니다.
+- 종료 확인을 취소하면 확인창을 열기 직전의 타이머 실행/정지 상태로 돌아갑니다.
+- 오디오는 컨텍스트를 공유하고 재생이 끝난 노드를 해제합니다. 도입 화면 닫기·음소거 시 재생과 대기 중인 오디오 작업을 취소하고 컨텍스트를 닫습니다.
+
+기존 `REF_GENIUS_VIRUS_GAME.md`는 이전 버전의 참고 자료로 현재 구현과 차이가 있을 수 있습니다. 현재 동작은 이 README 및 소스코드를 기준으로 합니다.
+
+## 배경 및 BGM
+
+- 시작 화면: `bg_lobby_lab.webp`
+- 설정·도입: `bg_briefing_lab.webp`. 게임 중에는 같은 이미지를 어둡게 표시해 이름과 타이머를 우선합니다. 기존 10단계 교육 이미지는 유지합니다.
+- 결과: 승리 진영에 따라 `bg_result_human.webp` 또는 `bg_result_infected.webp`.
+- 게임 진행 BGM: `bgm_game_suspense.mp3`. 타이머 정지·라운드 종료 시 음악도 일시정지하고, 재개 시 이어서 재생합니다.
+- 결과 BGM: `bgm_results_resolution.mp3`. 결과 화면 진입 시 전환합니다.
+- 시작·설정·도입에는 BGM이 없습니다. `bgm_lobby_mystery`는 사용하지 않습니다.
+- 기본 BGM 음량은 20%이며 음소거와 음량 선택을 제공합니다. 선택은 화면·라운드 전환 시 유지하고 새로고침 시 기본값으로 돌아갑니다. 도입의 기존 효과음 음소거와는 별도입니다.
+- 두 BGM은 원본 파일 전체를 반복 재생합니다. 장면 이동 시 이전 곡을 정지하며 중복 재생하지 않습니다. 자동 재생이 차단되면 ‘BGM 다시 재생’을 누를 수 있고 음원 오류가 게임 진행을 막지 않습니다.
+- 제공 파일은 원본 그대로 복사했으며 `src/assets/images`, `src/assets/audio`에 포함되어 외부 음원 서비스 없이 배포할 수 있습니다.

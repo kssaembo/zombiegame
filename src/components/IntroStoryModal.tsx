@@ -1,9 +1,10 @@
+import { playSound, playSynthSiren, stopSounds, disposeAudio } from '../audio/sound';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, CheckCircle2, Sparkles, AlertTriangle, X, Volume2, VolumeX, RotateCcw, FastForward } from 'lucide-react';
 
 // Import local images from assets
-import backBg from '../assets/images/back_bg_1784754202433.jpg';
+import backBg from '../assets/images/bg_briefing_lab.webp';
 import step1Img from '../assets/images/step1_img_1784754228525.jpg';
 import step2Img from '../assets/images/step2_img_1784754243056.jpg';
 import step3Img from '../assets/images/step3_img_1784754256753.jpg';
@@ -91,164 +92,6 @@ const STEPS_DATA: StepConfig[] = [
   },
 ];
 
-// Audio Sound Effects Synthesizer
-const playSound = (type: 'type' | 'confirm' | 'alert' | 'next' | 'siren') => {
-  try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-
-    if (type === 'type') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(440 + Math.random() * 200, ctx.currentTime);
-      gain.gain.setValueAtTime(0.015, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.04);
-    } else if (type === 'confirm') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(523.25, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.2);
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.25);
-    } else if (type === 'alert') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.setValueAtTime(440, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
-    } else if (type === 'next') {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(659.25, ctx.currentTime);
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.12);
-    } else if (type === 'siren') {
-      playSynthSiren(5000);
-    }
-  } catch (e) {
-    // Audio Context blocked or not supported
-  }
-};
-
-// Web Audio API synthesized siren for 5 seconds fallback
-const playSynthSiren = (durationMs: number = 5000) => {
-  try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
-    const now = ctx.currentTime;
-    const durationSec = durationMs / 1000;
-
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc1.type = 'sawtooth';
-    osc2.type = 'square';
-
-    // Loop siren sweep for 5 seconds
-    const cycleTime = 0.8;
-    const cycles = Math.ceil(durationSec / cycleTime);
-    for (let i = 0; i < cycles; i++) {
-      const startTime = now + (i * cycleTime);
-      osc1.frequency.setValueAtTime(550, startTime);
-      osc1.frequency.linearRampToValueAtTime(980, startTime + (cycleTime / 2));
-      osc1.frequency.linearRampToValueAtTime(550, startTime + cycleTime);
-
-      osc2.frequency.setValueAtTime(554, startTime);
-      osc2.frequency.linearRampToValueAtTime(984, startTime + (cycleTime / 2));
-      osc2.frequency.linearRampToValueAtTime(554, startTime + cycleTime);
-    }
-
-    gain.gain.setValueAtTime(0.2, now);
-    gain.gain.setValueAtTime(0.2, now + durationSec - 0.2);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + durationSec);
-    osc2.stop(now + durationSec);
-  } catch (e) {
-    // Audio Context not supported
-  }
-};
-
-// Play audio file for 5 seconds on OUTRO (긴급 재난 문자)
-const playOutroAudioFile = (
-  durationMs: number = 5000,
-  onAudioCreated?: (audio: HTMLAudioElement) => void
-) => {
-  const candidatePaths = [
-    '/siren.mp3',
-    '/siren.wav',
-    '/emergency.mp3',
-    '/alarm.mp3',
-    '/alert.mp3',
-    '/sound.mp3',
-    '/audio.mp3',
-    '/siren.ogg',
-    '/emergency.wav',
-    '/alert.wav'
-  ];
-
-  const tryPlay = (index: number) => {
-    if (index >= candidatePaths.length) {
-      // Fallback to Web Audio API siren
-      playSynthSiren(durationMs);
-      return;
-    }
-
-    const audio = new Audio(candidatePaths[index]);
-    audio.volume = 0.9;
-
-    audio.play().then(() => {
-      if (onAudioCreated) onAudioCreated(audio);
-      setTimeout(() => {
-        try {
-          audio.pause();
-          audio.currentTime = 0;
-        } catch (err) {
-          // ignore
-        }
-      }, durationMs);
-    }).catch(() => {
-      // Try next path if failed
-      tryPlay(index + 1);
-    });
-  };
-
-  tryPlay(0);
-};
-
 export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
   isOpen,
   onClose,
@@ -263,7 +106,7 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const outroAudioRef = useRef<HTMLAudioElement | null>(null);
+
 
   // Reset state when opening modal
   useEffect(() => {
@@ -276,29 +119,19 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
     }
   }, [isOpen]);
 
-  // Handle 5-second Audio playback strictly on OUTRO mode (긴급 재난 문자)
   useEffect(() => {
-    if (mode === 'OUTRO' && soundEnabled) {
-      playOutroAudioFile(5000, (audio) => {
-        outroAudioRef.current = audio;
-      });
-    }
+    if (!isOpen || !soundEnabled) disposeAudio();
+    return disposeAudio;
+  }, [isOpen, soundEnabled]);
 
-    return () => {
-      if (outroAudioRef.current) {
-        try {
-          outroAudioRef.current.pause();
-          outroAudioRef.current.currentTime = 0;
-        } catch (e) {
-          // ignore
-        }
-      }
-    };
-  }, [mode, soundEnabled]);
+  useEffect(() => {
+    if (isOpen && mode === 'OUTRO' && soundEnabled) playSynthSiren(5000);
+    return stopSounds;
+  }, [isOpen, mode, soundEnabled]);
 
   // Handle Typewriter effect for Quiz questions
   useEffect(() => {
-    if (mode === 'QUIZ') {
+    if (isOpen && mode === 'QUIZ') {
       const currentConfig = STEPS_DATA[currentStepIndex];
       const targetText = currentConfig.question;
       
@@ -327,7 +160,7 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
         if (typingTimerRef.current) clearInterval(typingTimerRef.current);
       };
     }
-  }, [mode, currentStepIndex, soundEnabled]);
+  }, [isOpen, mode, currentStepIndex, soundEnabled]);
 
   if (!isOpen) return null;
 
