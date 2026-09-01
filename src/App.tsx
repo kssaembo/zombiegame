@@ -33,6 +33,7 @@ import { loadSave, writeSave, clearSave, type SavedGame } from './game/storage';
 import { createId } from './game/id';
 import { SceneBackground } from './components/SceneBackground';
 import { BackgroundMusic } from './components/BackgroundMusic';
+import { installButtonSounds, type ButtonSound } from './audio/buttonSound';
 
 // --- Utility Components ---
 
@@ -48,14 +49,16 @@ const Button = React.memo(({
   variant = 'primary', 
   disabled = false, 
   className = "",
-  size = 'md'
+  size = 'md',
+  sound,
 }: { 
   children: React.ReactNode, 
   onClick?: () => void, 
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'neon',
   disabled?: boolean,
   className?: string,
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg',
+  sound?: ButtonSound,
 }) => {
   const variants = {
     primary: 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/20',
@@ -73,6 +76,7 @@ const Button = React.memo(({
 
   return (
     <button
+      data-sound={sound ?? (variant === 'danger' ? 'alert' : variant === 'neon' ? 'confirm' : variant === 'primary' ? 'confirm' : 'select')}
       onClick={onClick}
       disabled={disabled}
       className={`
@@ -913,7 +917,7 @@ const GameView = React.memo(({
       </div>
 
       {/* Teacher Page Button */}
-      <div className="fixed bottom-16 right-8 z-50">
+      <div className="fixed bottom-20 right-8 z-50">
         <Button 
           variant="ghost" 
           size="sm"
@@ -1149,6 +1153,10 @@ export default function App() {
   const [confirmCureId, setConfirmCureId] = useState<string | null>(null);
   const [touchHistory, setTouchHistory] = useState<string[]>([]);
   const [isIntroOpen, setIsIntroOpen] = useState(false);
+  const [teacherNoticeOpen, setTeacherNoticeOpen] = useState(false);
+  const [suppressTeacherNotice, setSuppressTeacherNotice] = useState(false);
+
+  useEffect(() => installButtonSounds(), []);
 
   // --- Logic Handlers ---
 
@@ -1302,7 +1310,23 @@ export default function App() {
   const handleCureRequest = React.useCallback((id: string) => {
     if (students.some(s => s.id === id)) setConfirmCureId(id);
   }, [students]);
-  const handleShowTeacherPage = React.useCallback(() => setShowTeacherPage(true), []);
+  const handleShowTeacherPage = React.useCallback(() => {
+    try {
+      if (localStorage.getItem('virus-game.teacher-notice.dismissed') === 'true') {
+        setShowTeacherPage(true);
+        return;
+      }
+    } catch { /* Show the warning when preferences cannot be read. */ }
+    setSuppressTeacherNotice(false);
+    setTeacherNoticeOpen(true);
+  }, []);
+  const handleTeacherNoticeConfirm = React.useCallback(() => {
+    if (suppressTeacherNotice) {
+      try { localStorage.setItem('virus-game.teacher-notice.dismissed', 'true'); } catch { /* Preference remains session-only. */ }
+    }
+    setTeacherNoticeOpen(false);
+    setShowTeacherPage(true);
+  }, [suppressTeacherNotice]);
   const handleCloseTeacherPage = React.useCallback(() => setShowTeacherPage(false), []);
   const handleConfirmCureCancel = React.useCallback(() => setConfirmCureId(null), []);
   const handleClearAll = React.useCallback(() => setStudents([]), []);
@@ -1386,7 +1410,7 @@ export default function App() {
       <SceneBackground view={view} humanSurvived={students.some(student => !student.isZombie)} />
 
       <main className="relative z-10 container mx-auto px-4 py-8 pb-64">
-        <BackgroundMusic view={view} isTimerRunning={isTimerRunning} />
+        <BackgroundMusic view={view} />
         {saveError && <div role="alert" className="max-w-4xl mx-auto mb-4 rounded-xl border border-amber-500 p-4 text-amber-200">{saveError}</div>}
         {view === 'START' && savedGame && (
           <Card className="max-w-2xl mx-auto mb-6">
@@ -1512,6 +1536,30 @@ export default function App() {
                 >
                   확인
                 </Button>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {teacherNoticeOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[130] flex items-center justify-center bg-black/80 p-6 backdrop-blur-md">
+            <Card className="w-full max-w-md" >
+              <div role="dialog" aria-modal="true" aria-labelledby="teacher-notice-title">
+                <div className="mb-4 flex items-center gap-3">
+                  <AlertTriangle className="h-7 w-7 text-amber-400" aria-hidden="true" />
+                  <h2 id="teacher-notice-title" className="text-xl font-bold">교사 페이지 안내</h2>
+                </div>
+                <p className="mb-5 leading-relaxed text-zinc-300">교사 페이지에는 감염 상태와 점수가 표시됩니다. 학생들에게 노출되지 않도록 주의해 주세요.</p>
+                <label className="mb-6 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 text-sm text-zinc-200">
+                  <input type="checkbox" checked={suppressTeacherNotice} onChange={event => setSuppressTeacherNotice(event.target.checked)} className="h-5 w-5 accent-purple-500" />
+                  다시 뜨지 않음
+                </label>
+                <div className="flex gap-3">
+                  <Button variant="secondary" className="flex-1" onClick={() => setTeacherNoticeOpen(false)}>취소</Button>
+                  <Button className="flex-1" onClick={handleTeacherNoticeConfirm}>확인</Button>
+                </div>
               </div>
             </Card>
           </motion.div>

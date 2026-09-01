@@ -36,13 +36,16 @@ function tone(ctx: AudioContext, duration: number, volume: number, shape: Oscill
   osc.stop(now + duration);
 }
 
-export function playSound(type: 'type' | 'confirm' | 'alert' | 'next' | 'siren') {
+export type SoundType = 'type' | 'select' | 'confirm' | 'alert' | 'next' | 'siren';
+
+export function playSound(type: SoundType) {
   if (type === 'siren') { playSynthSiren(); return; }
   void withContext(ctx => {
-    const duration = { type: 0.04, confirm: 0.25, alert: 0.35, next: 0.12 }[type];
-    const volume = { type: 0.015, confirm: 0.1, alert: 0.12, next: 0.08 }[type];
-    tone(ctx, duration, volume, type === 'type' ? 'triangle' : type === 'alert' ? 'sawtooth' : 'sine', (frequency, now) => {
+    const duration = { type: 0.04, select: 0.07, confirm: 0.25, alert: 0.35, next: 0.12 }[type];
+    const volume = { type: 0.015, select: 0.035, confirm: 0.1, alert: 0.12, next: 0.08 }[type];
+    tone(ctx, duration, volume, type === 'type' || type === 'select' ? 'triangle' : type === 'alert' ? 'sawtooth' : 'sine', (frequency, now) => {
       if (type === 'type') frequency.setValueAtTime(440 + Math.random() * 200, now);
+      if (type === 'select') { frequency.setValueAtTime(720, now); frequency.linearRampToValueAtTime(880, now + duration); }
       if (type === 'confirm') { frequency.setValueAtTime(523.25, now); frequency.exponentialRampToValueAtTime(1046.5, now + 0.2); }
       if (type === 'alert') { frequency.setValueAtTime(880, now); frequency.setValueAtTime(440, now + 0.15); }
       if (type === 'next') frequency.setValueAtTime(659.25, now);

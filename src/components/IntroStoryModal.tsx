@@ -169,12 +169,10 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
 
   // Actions
   const handleConfirmAnswer = () => {
-    if (soundEnabled) playSound('confirm');
     setShowAnswer(true);
   };
 
   const handleNextStep = () => {
-    if (soundEnabled) playSound('next');
     if (currentStepIndex < STEPS_DATA.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
       setShowAnswer(false);
@@ -293,7 +291,6 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
             <div className="pb-8 w-full max-w-md mx-auto flex flex-col items-center gap-3">
               <button
                 onClick={() => {
-                  if (soundEnabled) playSound('next');
                   setMode('QUIZ');
                 }}
                 className="w-full py-4 px-8 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-green-600 text-white text-xl font-black tracking-wide shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:shadow-[0_0_45px_rgba(168,85,247,0.8)] hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-2 group"
@@ -529,7 +526,6 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
             <div className="pb-6 w-full max-w-md mx-auto">
               <button
                 onClick={() => {
-                  if (soundEnabled) playSound('alert');
                   onStartGame();
                 }}
                 className="w-full py-4 md:py-5 px-8 rounded-2xl bg-gradient-to-r from-red-600 via-purple-600 to-green-600 text-white text-xl md:text-2xl font-bold tracking-tight shadow-[0_0_40px_rgba(239,68,68,0.7)] hover:shadow-[0_0_60px_rgba(239,68,68,0.9)] hover:scale-105 active:scale-95 transition-all duration-300 flex items-center justify-center gap-3 group font-['Do_Hyeon',sans-serif]"

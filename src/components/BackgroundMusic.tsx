@@ -1,60 +1,52 @@
 import { useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX, Music2 } from 'lucide-react';
+import { Music2, Pause, Play } from 'lucide-react';
 import type { GameState } from '../types';
 import gameMusic from '../assets/audio/bgm_game_suspense.mp3';
 import resultMusic from '../assets/audio/bgm_results_resolution.mp3';
 
-export function BackgroundMusic({ view, isTimerRunning }: { view: GameState; isTimerRunning: boolean }) {
+export function BackgroundMusic({ view }: { view: GameState }) {
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(0.2);
+  const [userPaused, setUserPaused] = useState(false);
   const [status, setStatus] = useState<'paused' | 'playing' | 'blocked' | 'error'>('paused');
   const src = view === 'GAME' ? gameMusic : view === 'RESULTS' ? resultMusic : undefined;
-  const shouldPlay = !muted && (view === 'RESULTS' || (view === 'GAME' && isTimerRunning));
 
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = volume;
-  }, [volume, src]);
-
+  useEffect(() => setUserPaused(false), [view]);
+  useEffect(() => { if (audioRef.current) audioRef.current.volume = volume; }, [volume, src]);
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !src) return;
     let cancelled = false;
-    setStatus('paused');
-    if (shouldPlay) {
+    if (!userPaused) {
       void audio.play().catch(error => {
         if (!cancelled) setStatus(error?.name === 'NotAllowedError' ? 'blocked' : 'error');
       });
     } else audio.pause();
-    // Pause on route changes/unmount; play() rejections from an old track are ignored.
     return () => { cancelled = true; audio.pause(); };
-  }, [src, shouldPlay]);
+  }, [src, userPaused]);
 
-  const retryPlayback = () => {
+  if (!src) return null;
+
+  const paused = userPaused || status !== 'playing';
+  const togglePlayback = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    // Call play inside the click itself for browsers that require user activation.
-    void audio.play().catch(error => {
-      if (audioRef.current === audio) setStatus(error?.name === 'NotAllowedError' ? 'blocked' : 'error');
-    });
+    if (!audio.paused && !userPaused) { setUserPaused(true); return; }
+    setUserPaused(false);
+    void audio.play().catch(error => setStatus(error?.name === 'NotAllowedError' ? 'blocked' : 'error'));
   };
 
-  if (!src) return null; // No lobby/setup BGM and no request for a lobby audio file.
-
   return (
-    <section aria-label="배경 음악 설정" className="mx-auto mb-5 flex max-w-4xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-2xl border border-white/15 bg-slate-950/85 px-4 py-3 text-sm shadow-lg backdrop-blur-md">
-      <audio ref={audioRef} src={src} loop preload="none" onPlaying={() => setStatus('playing')} onPause={() => setStatus(current => current === 'error' || current === 'blocked' ? current : 'paused')} onError={() => setStatus('error')} />
-      <span className="flex items-center gap-2 text-slate-300"><Music2 className="h-4 w-4" aria-hidden="true" />{view === 'RESULTS' ? '결과 BGM' : '게임 BGM'}</span>
-      <button type="button" aria-label={muted ? 'BGM 음소거 해제' : 'BGM 음소거'} aria-pressed={muted} onClick={() => setMuted(value => !value)} className="flex min-h-10 items-center gap-2 rounded-lg border border-white/15 px-3 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-purple-400">
-        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}{muted ? '음소거 해제' : '음소거'}
+    <section aria-label="배경 음악 설정" className="fixed bottom-4 right-4 z-[90] flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl border border-white/15 bg-slate-950/90 px-2.5 py-2 text-xs shadow-2xl backdrop-blur-md">
+      <audio ref={audioRef} src={src} loop preload="auto" onPlaying={() => setStatus('playing')} onPause={() => setStatus(current => current === 'blocked' || current === 'error' ? current : 'paused')} onError={() => setStatus('error')} />
+      <button type="button" data-sound="select" aria-label={paused ? 'BGM 재생' : 'BGM 일시정지'} onClick={togglePlayback} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-600 text-white hover:bg-purple-500">
+        {paused ? <Play className="h-4 w-4 fill-current" /> : <Pause className="h-4 w-4 fill-current" />}
       </button>
-      <label className="flex items-center gap-2 text-slate-300">BGM 음량
-        <select value={Math.round(volume * 100)} onChange={event => setVolume(Number(event.target.value) / 100)} className="min-h-10 rounded-lg border border-white/20 bg-slate-900 px-2 text-white">
-          {[0, 10, 20, 30, 40, 50, 75, 100].map(value => <option key={value} value={value}>{value}%</option>)}
-        </select>
-      </label>
-      <span role="status" className="text-xs text-slate-400">{muted ? '음소거' : status === 'blocked' ? '브라우저에서 자동 재생을 차단했습니다.' : status === 'error' ? '음악을 불러오지 못했습니다. 게임은 계속할 수 있습니다.' : status === 'playing' ? '재생 중' : shouldPlay ? '음악 준비 중' : '타이머와 함께 일시정지'}</span>
-      {(status === 'blocked' || status === 'error') && shouldPlay && <button type="button" className="min-h-10 rounded-lg bg-purple-600 px-3 text-white" onClick={retryPlayback}>BGM 다시 재생</button>}
+      <span className="flex shrink-0 items-center gap-1.5 font-semibold text-slate-200"><Music2 className="h-3.5 w-3.5" aria-hidden="true" />BGM</span>
+      <label className="sr-only" htmlFor="bgm-volume">BGM 음량</label>
+      <input id="bgm-volume" aria-label="BGM 음량" type="range" min="0" max="100" step="5" value={Math.round(volume * 100)} onInput={event => setVolume(Number(event.currentTarget.value) / 100)} onChange={event => setVolume(Number(event.target.value) / 100)} className="w-20 accent-purple-400 sm:w-24" />
+      <span className="w-8 shrink-0 text-right tabular-nums text-slate-400">{Math.round(volume * 100)}%</span>
+      <span role="status" className="sr-only">{status === 'blocked' ? '자동 재생이 차단되었습니다. 재생 버튼을 눌러주세요.' : status === 'error' ? 'BGM을 불러오지 못했습니다.' : status === 'playing' ? 'BGM 재생 중' : 'BGM 일시정지'}</span>
     </section>
   );
 }
