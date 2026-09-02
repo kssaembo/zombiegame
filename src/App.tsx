@@ -9,10 +9,8 @@ import {
   Play, 
   Settings, 
   Users, 
-  Skull, 
   Timer, 
   Zap, 
-  Heart, 
   RotateCcw, 
   CheckCircle2, 
   AlertTriangle,
@@ -21,7 +19,6 @@ import {
   BookOpen,
   Plus,
   X,
-  Download,
   FileSpreadsheet,
   Youtube
 } from 'lucide-react';
@@ -34,6 +31,10 @@ import { BackgroundMusic } from './components/BackgroundMusic';
 import { installButtonSounds, type ButtonSound } from './audio/buttonSound';
 import { downloadGameWorkbook } from './export/excel';
 import { APP_VERSION } from './version';
+import virusGameSymbol from './assets/images/symbol_virus_game.png';
+import humanEmblem from './assets/images/emblem_human.png';
+import infectedEmblem from './assets/images/emblem_infected.png';
+import treatmentIcon from './assets/images/icon_treatment.png';
 
 const IntroStoryModal = React.lazy(() => import('./components/IntroStoryModal').then(module => ({ default: module.IntroStoryModal })));
 
@@ -140,8 +141,9 @@ const TeacherPage = React.memo(({
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {students.map(s => (
-                  <div key={s.id} className={`p-4 rounded-xl border-2 ${s.isZombie ? 'border-green-500/50 bg-green-500/5' : 'border-zinc-800 bg-zinc-900'}`}>
-                    <p className={`font-bold text-lg ${s.isZombie ? 'text-green-500' : 'text-white'}`}>{s.name}</p>
+                  <div key={s.id} className={`relative overflow-hidden p-4 rounded-xl border-2 ${s.isZombie ? 'border-lime-400/60 bg-lime-950/20' : 'border-cyan-500/30 bg-cyan-950/10'}`}>
+                    <img src={s.isZombie ? infectedEmblem : humanEmblem} alt="" aria-hidden="true" className="absolute -right-3 -top-3 h-16 w-16 object-contain opacity-30" />
+                    <p className={`relative font-bold text-lg ${s.isZombie ? 'text-lime-300' : 'text-cyan-100'}`}>{s.name}</p>
                     <p className="text-xs text-zinc-500">승점: {s.points}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {s.isZombie && <span className="text-[8px] bg-green-500 text-black px-1 rounded uppercase font-bold">감염자</span>}
@@ -200,18 +202,20 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
   const slides = [
     {
       title: "1장. 게임 개요 및 진영",
-      icon: <Users className="w-12 h-12 text-purple-400" />,
+      icon: <div className="flex items-center gap-2"><img src={humanEmblem} alt="비감염자 진영" className="h-12 w-12 object-contain" /><img src={infectedEmblem} alt="감염자 진영" className="h-12 w-12 object-contain" /></div>,
       content: (
         <div className="space-y-4">
           <p className="text-zinc-300 leading-relaxed text-sm md:text-base">
             게임은 비밀리에 나뉜 두 <span className="font-bold">진영</span>(비감염자와 감염자) 사이의 고도의 생존 예측 대결입니다.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <div className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 space-y-2">
+            <div className="relative overflow-hidden p-4 rounded-xl bg-cyan-950/20 border border-cyan-700/40 space-y-2">
+              <img src={humanEmblem} alt="" aria-hidden="true" className="absolute -right-2 -top-2 h-20 w-20 object-contain opacity-25" />
               <span className="text-purple-400 text-xs font-bold uppercase tracking-wider block">비감염자 진영</span>
               <p className="text-zinc-300 text-xs leading-relaxed">감염자의 감염을 피하고, 치료제를 사용하여 마지막까지 비감염자로서 살아남으세요.</p>
             </div>
-            <div className="p-4 rounded-xl bg-green-950/20 border border-green-900/40 space-y-2">
+            <div className="relative overflow-hidden p-4 rounded-xl bg-lime-950/20 border border-lime-700/40 space-y-2">
+              <img src={infectedEmblem} alt="" aria-hidden="true" className="absolute -right-2 -top-2 h-20 w-20 object-contain opacity-25" />
               <span className="text-green-400 text-xs font-bold uppercase tracking-wider block">감염자 진영</span>
               <p className="text-green-300 text-xs leading-relaxed font-bold">감염자의 목표: 모든 비감염자를 감염시키세요.</p>
             </div>
@@ -245,7 +249,7 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
     },
     {
       title: "3장. 치료제 사용",
-      icon: <Heart className="w-12 h-12 text-red-500" />,
+      icon: <img src={treatmentIcon} alt="치료제" className="h-14 w-14 object-contain" />,
       content: (
         <div className="space-y-4">
           <div className="space-y-3">
@@ -296,7 +300,7 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
     },
     {
       title: "5장. 승리 조건",
-      icon: <Skull className="w-12 h-12 text-green-500" />,
+      icon: <div className="flex items-center gap-2"><img src={infectedEmblem} alt="감염자 진영" className="h-12 w-12 object-contain" /><img src={humanEmblem} alt="비감염자 진영" className="h-12 w-12 object-contain" /></div>,
       content: (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -341,7 +345,13 @@ const StartView = React.memo(({ onStart }: { onStart: () => void }) => {
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center justify-center min-h-[80vh] text-center"
     >
-      <Skull className="w-24 h-24 text-green-500 mb-6 animate-pulse" />
+      <motion.img
+        src={virusGameSymbol}
+        alt="바이러스 게임 심볼"
+        className="mb-5 h-28 w-28 object-contain drop-shadow-[0_0_28px_rgba(34,229,139,0.5)] sm:h-32 sm:w-32"
+        animate={{ y: [0, -6, 0], filter: ['brightness(1)', 'brightness(1.15)', 'brightness(1)'] }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      />
       <h1 className="text-6xl font-black mb-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-green-500">
         VIRUS GAME
       </h1>
@@ -683,7 +693,7 @@ const SetupZombiesView = React.memo(({
     >
       <Card>
         <div className="flex items-center gap-3 mb-8">
-          <Skull className="text-green-500" />
+          <img src={infectedEmblem} alt="" aria-hidden="true" className="h-10 w-10 object-contain" />
           <h2 className="text-2xl font-bold">최초 감염자 지목</h2>
         </div>
 
@@ -780,7 +790,7 @@ const GameView = React.memo(({
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4">
+    <div className="max-w-6xl mx-auto px-4 pb-8 pt-44 sm:pt-40 lg:pt-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
         <div className="flex items-center gap-4">
@@ -917,34 +927,35 @@ const GameView = React.memo(({
             onClick={() => onCureRequest(selectedIds[0])}
             className={`h-16 min-w-0 flex-1 px-3 text-base border-red-500/50 transition-all duration-300 sm:h-20 sm:w-48 sm:flex-none sm:text-xl ${selectedIds.length === 1 && isTimerRunning ? 'opacity-100 scale-100' : 'opacity-20 scale-95 pointer-events-none'}`}
           >
-            <Heart className="w-8 h-8 text-red-500" /> 치료제
+            <img src={treatmentIcon} alt="" aria-hidden="true" className="h-10 w-10 object-contain" /> 치료제
           </Button>
         </div>
       </div>
 
-      {/* Teacher Page Button */}
-      <div className="fixed right-2 top-2 z-50 sm:right-4 sm:top-4 md:bottom-20 md:right-8 md:top-auto">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={onShowTeacherPage}
-          className="text-zinc-600 hover:text-zinc-400 bg-black/20 backdrop-blur-sm rounded-full px-4"
-        >
-          교사 페이지
-        </Button>
-      </div>
-
-      {/* Force End Game Button */}
-      <div className="fixed left-2 top-2 z-50 sm:left-4 sm:top-4 md:bottom-16 md:left-8 md:top-auto">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={() => setIsForceEndConfirmOpen(true)}
-          className="text-red-500 hover:text-red-400 hover:bg-red-950/20 bg-black/20 backdrop-blur-sm rounded-full px-4"
-        >
-          게임 강제 종료
-        </Button>
-      </div>
+      {/* Teacher and emergency controls */}
+      <aside aria-label="게임 관리 도구" className="fixed left-2 top-2 z-[70] w-[min(22rem,calc(100vw-1rem))] rounded-2xl border border-white/15 bg-slate-950/95 p-3 shadow-2xl shadow-black/60 backdrop-blur-xl sm:left-4 sm:top-4 sm:p-4">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onShowTeacherPage}
+            className="min-h-11 flex-1 border border-purple-300/50 bg-purple-600 px-4 font-bold text-white shadow-[0_0_22px_rgba(168,85,247,0.28)] hover:bg-purple-500"
+          >
+            <Users className="h-5 w-5" aria-hidden="true" /> 교사 페이지
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setIsForceEndConfirmOpen(true)}
+            className="min-h-11 flex-1 border border-red-300/40 bg-red-700 px-4 font-bold text-white shadow-[0_0_22px_rgba(239,68,68,0.22)] hover:bg-red-600"
+          >
+            <AlertTriangle className="h-5 w-5" aria-hidden="true" /> 게임 강제 종료
+          </Button>
+        </div>
+        <p className="mt-3 rounded-xl border border-amber-400/35 bg-amber-950/55 px-3 py-2 text-xs font-semibold leading-relaxed text-amber-100">
+          게임 과정 로그를 확인할 수 있습니다. 학생들에게 공개하지 않도록 주의해 주세요.
+        </p>
+      </aside>
 
       {/* Force End Confirmation Modal */}
       <AnimatePresence>
@@ -978,7 +989,7 @@ const GameView = React.memo(({
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6"
           >
             <Card className="max-w-sm w-full text-center">
-              <Heart className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <img src={treatmentIcon} alt="치료제" className="mx-auto mb-4 h-20 w-20 object-contain drop-shadow-[0_0_18px_rgba(251,113,133,0.35)]" />
               <h3 className="text-xl font-bold mb-2">치료제 사용</h3>
               <p className="text-zinc-400 mb-6">치료제를 사용하시겠습니까?</p>
               <div className="flex gap-3">
@@ -1082,12 +1093,12 @@ const ResultsView = React.memo(({
       
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-12 mb-14 sm:mb-20">
         <div className={`p-6 sm:p-12 rounded-3xl border-4 transition-all duration-500 ${winner === 'ZOMBIE' ? 'border-green-500 bg-green-500/10 sm:scale-105' : 'border-zinc-800'}`}>
-          <Skull className={`w-16 h-16 mx-auto mb-4 ${winner === 'ZOMBIE' ? 'text-green-500' : 'text-zinc-700'}`} />
+          <img src={infectedEmblem} alt="감염자 진영" className={`mx-auto mb-4 h-24 w-24 object-contain transition-all ${winner === 'ZOMBIE' ? 'opacity-100 drop-shadow-[0_0_22px_rgba(163,230,53,0.45)]' : 'opacity-35 grayscale'}`} />
           <p className="text-5xl sm:text-7xl font-black mb-2">{zombieCount}</p>
           <p className="text-xl font-bold text-zinc-500">감염자 진영</p>
         </div>
         <div className={`p-6 sm:p-12 rounded-3xl border-4 transition-all duration-500 ${winner === 'HUMAN' ? 'border-purple-500 bg-purple-500/10 sm:scale-105' : 'border-zinc-800'}`}>
-          <Users className={`w-16 h-16 mx-auto mb-4 ${winner === 'HUMAN' ? 'text-purple-500' : 'text-zinc-700'}`} />
+          <img src={humanEmblem} alt="비감염자 진영" className={`mx-auto mb-4 h-24 w-24 object-contain transition-all ${winner === 'HUMAN' ? 'opacity-100 drop-shadow-[0_0_22px_rgba(34,211,238,0.4)]' : 'opacity-35 grayscale'}`} />
           <p className="text-5xl sm:text-7xl font-black mb-2">{humanCount}</p>
           <p className="text-xl font-bold text-zinc-500">비감염자 진영</p>
         </div>
