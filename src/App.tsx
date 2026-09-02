@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import * as XLSX from 'xlsx';
 import { 
   Play, 
   Settings, 
@@ -27,13 +26,16 @@ import {
   Youtube
 } from 'lucide-react';
 import { Student, GameState, GameConfig, GameLog } from './types';
-import { IntroStoryModal } from './components/IntroStoryModal';
-import { isValidRoundTime, resolveTouch, resolveCure, resolveRoundEnd, logRows, statusOf, type LogEntry } from './game/rules';
+import { isValidRoundTime, resolveTouch, resolveCure, resolveRoundEnd, type LogEntry } from './game/rules';
 import { loadSave, writeSave, clearSave, type SavedGame } from './game/storage';
 import { createId } from './game/id';
 import { SceneBackground } from './components/SceneBackground';
 import { BackgroundMusic } from './components/BackgroundMusic';
 import { installButtonSounds, type ButtonSound } from './audio/buttonSound';
+import { downloadGameWorkbook } from './export/excel';
+import { APP_VERSION } from './version';
+
+const IntroStoryModal = React.lazy(() => import('./components/IntroStoryModal').then(module => ({ default: module.IntroStoryModal })));
 
 // --- Utility Components ---
 
@@ -599,6 +601,10 @@ const SetupStudentsView = React.memo(({
             <span className="text-amber-400 font-bold shrink-0">📌 안내:</span>
             <span>학생 명부 한글 파일에서 학생 이름 셀만 블록 지정하신 후 합치기를 합니다. 이후 학생 이름 전체를 복사해 붙여넣기를 하시면 편리합니다.</span>
           </div>
+          <div role="note" className="p-3.5 bg-cyan-950/35 border border-cyan-500/30 rounded-xl text-xs md:text-sm text-cyan-100 leading-relaxed flex items-start gap-2">
+            <span aria-hidden="true" className="shrink-0">🔒</span>
+            <span><strong>공용 PC 개인정보 안내:</strong> 가능하면 이름 대신 번호나 별칭을 사용하고, 게임 종료 후 반드시 ‘처음으로 돌아가기’ 또는 ‘게임 강제 종료’를 눌러 저장 기록을 삭제하세요.</span>
+          </div>
 
           <textarea 
             value={bulkInput}
@@ -892,14 +898,14 @@ const GameView = React.memo(({
       </div>
 
       {/* Action Bar */}
-      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-4 z-50">
-        <div className="flex items-center gap-4 bg-black/40 backdrop-blur-md p-4 rounded-full border border-zinc-800/50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+      <div className="fixed bottom-20 left-1/2 z-50 flex w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 sm:w-auto sm:gap-4">
+        <div className="flex w-full items-center gap-2 rounded-3xl border border-zinc-800/50 bg-black/70 p-2 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] backdrop-blur-md sm:w-auto sm:gap-4 sm:rounded-full sm:p-4">
           <Button 
             size="lg" 
             variant="neon" 
             disabled={selectedIds.length !== 2 || !isTimerRunning}
             onClick={onHandleTouch}
-            className={`h-20 w-48 text-xl transition-all duration-300 ${selectedIds.length === 2 && isTimerRunning ? 'opacity-100 scale-100' : 'opacity-20 scale-95 pointer-events-none'}`}
+            className={`h-16 min-w-0 flex-1 px-3 text-base transition-all duration-300 sm:h-20 sm:w-48 sm:flex-none sm:text-xl ${selectedIds.length === 2 && isTimerRunning ? 'opacity-100 scale-100' : 'opacity-20 scale-95 pointer-events-none'}`}
           >
             <Zap className="w-8 h-8" /> 터치
           </Button>
@@ -909,7 +915,7 @@ const GameView = React.memo(({
             variant="secondary" 
             disabled={selectedIds.length !== 1 || !isTimerRunning}
             onClick={() => onCureRequest(selectedIds[0])}
-            className={`h-20 w-48 text-xl border-red-500/50 transition-all duration-300 ${selectedIds.length === 1 && isTimerRunning ? 'opacity-100 scale-100' : 'opacity-20 scale-95 pointer-events-none'}`}
+            className={`h-16 min-w-0 flex-1 px-3 text-base border-red-500/50 transition-all duration-300 sm:h-20 sm:w-48 sm:flex-none sm:text-xl ${selectedIds.length === 1 && isTimerRunning ? 'opacity-100 scale-100' : 'opacity-20 scale-95 pointer-events-none'}`}
           >
             <Heart className="w-8 h-8 text-red-500" /> 치료제
           </Button>
@@ -917,7 +923,7 @@ const GameView = React.memo(({
       </div>
 
       {/* Teacher Page Button */}
-      <div className="fixed bottom-20 right-8 z-50">
+      <div className="fixed right-2 top-2 z-50 sm:right-4 sm:top-4 md:bottom-20 md:right-8 md:top-auto">
         <Button 
           variant="ghost" 
           size="sm"
@@ -929,7 +935,7 @@ const GameView = React.memo(({
       </div>
 
       {/* Force End Game Button */}
-      <div className="fixed bottom-16 left-8 z-50">
+      <div className="fixed left-2 top-2 z-50 sm:left-4 sm:top-4 md:bottom-16 md:left-8 md:top-auto">
         <Button 
           variant="ghost" 
           size="sm"
@@ -1074,15 +1080,15 @@ const ResultsView = React.memo(({
     >
       <h2 className="text-2xl font-bold text-zinc-500 uppercase tracking-widest mb-12">최종 결과</h2>
       
-      <div className="grid grid-cols-2 gap-12 mb-20">
-        <div className={`p-12 rounded-3xl border-4 transition-all duration-500 ${winner === 'ZOMBIE' ? 'border-green-500 bg-green-500/10 scale-110' : 'border-zinc-800'}`}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-12 mb-14 sm:mb-20">
+        <div className={`p-6 sm:p-12 rounded-3xl border-4 transition-all duration-500 ${winner === 'ZOMBIE' ? 'border-green-500 bg-green-500/10 sm:scale-105' : 'border-zinc-800'}`}>
           <Skull className={`w-16 h-16 mx-auto mb-4 ${winner === 'ZOMBIE' ? 'text-green-500' : 'text-zinc-700'}`} />
-          <p className="text-7xl font-black mb-2">{zombieCount}</p>
+          <p className="text-5xl sm:text-7xl font-black mb-2">{zombieCount}</p>
           <p className="text-xl font-bold text-zinc-500">감염자 진영</p>
         </div>
-        <div className={`p-12 rounded-3xl border-4 transition-all duration-500 ${winner === 'HUMAN' ? 'border-purple-500 bg-purple-500/10 scale-110' : 'border-zinc-800'}`}>
+        <div className={`p-6 sm:p-12 rounded-3xl border-4 transition-all duration-500 ${winner === 'HUMAN' ? 'border-purple-500 bg-purple-500/10 sm:scale-105' : 'border-zinc-800'}`}>
           <Users className={`w-16 h-16 mx-auto mb-4 ${winner === 'HUMAN' ? 'text-purple-500' : 'text-zinc-700'}`} />
-          <p className="text-7xl font-black mb-2">{humanCount}</p>
+          <p className="text-5xl sm:text-7xl font-black mb-2">{humanCount}</p>
           <p className="text-xl font-bold text-zinc-500">비감염자 진영</p>
         </div>
       </div>
@@ -1092,7 +1098,7 @@ const ResultsView = React.memo(({
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
         >
-          <h1 className={`text-8xl font-black mb-8 tracking-tighter ${winner === 'ZOMBIE' ? 'text-green-500' : 'text-purple-500'}`}>
+          <h1 className={`text-4xl sm:text-6xl lg:text-8xl font-black mb-8 tracking-tighter ${winner === 'ZOMBIE' ? 'text-green-500' : 'text-purple-500'}`}>
             {winner === 'ZOMBIE' ? '감염자 승리' : '비감염자 승리'}
           </h1>
 
@@ -1113,7 +1119,7 @@ const ResultsView = React.memo(({
             </div>
           )}
 
-          <div className="flex gap-4 justify-center mt-8">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             <Button size="lg" variant="secondary" onClick={onExport}>
               <FileSpreadsheet className="w-6 h-6" /> 결과 엑셀 다운로드
             </Button>
@@ -1211,14 +1217,13 @@ export default function App() {
   }, [isTimerRunning, timeLeft, students, currentRound, appendLogs]);
 
   const exportToExcel = React.useCallback(() => {
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(logRows(logs)), '게임 로그');
-    const summary = [
-      ['학생 ID', '학생명', '현재 상태', '누적승점', '최초감염자', '현재 라운드'],
-      ...students.map(s => [s.id, s.name, statusOf(s), s.points, s.isOriginalZombie ? 'O' : 'X', currentRound]),
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), '학생 현황');
-    XLSX.writeFile(wb, `바이러스게임_결과_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    void downloadGameWorkbook(logs, students, currentRound).catch(() => {
+      setModal({
+        title: 'Excel 저장 실패',
+        message: '결과 파일을 만들지 못했습니다. 브라우저의 다운로드 차단 설정을 확인한 뒤 다시 시도해주세요.',
+        type: 'warning',
+      });
+    });
   }, [logs, students, currentRound]);
 
   const nextRound = React.useCallback(() => {
@@ -1499,7 +1504,7 @@ export default function App() {
         <div className="container mx-auto px-4">
           <p className="text-zinc-500 text-sm mb-2">제안이나 문의사항이 있으시면 언제든 메일 주세요.</p>
           <p className="text-zinc-400 text-sm font-medium mb-4">Contact: <a href="mailto:sinjoppo@naver.com" className="hover:text-purple-400 transition-colors">sinjoppo@naver.com</a></p>
-          <p className="text-zinc-600 text-xs tracking-wider uppercase">ⓒ 2026. Kwon's class. All rights reserved.</p>
+          <p className="text-zinc-600 text-xs tracking-wider uppercase">ⓒ 2026. Kwon's class. All rights reserved. · v{APP_VERSION}</p>
         </div>
       </footer>
 
@@ -1567,11 +1572,13 @@ export default function App() {
       </AnimatePresence>
 
       {/* Intro Story Modal */}
-      <IntroStoryModal 
-        isOpen={isIntroOpen} 
-        onClose={() => setIsIntroOpen(false)} 
-        onStartGame={handleIntroStartGame} 
-      />
+      <React.Suspense fallback={isIntroOpen ? <div role="status" className="fixed inset-0 z-[120] grid place-items-center bg-slate-950 text-sm text-slate-300">도입 화면을 준비하고 있습니다…</div> : null}>
+        <IntroStoryModal 
+          isOpen={isIntroOpen} 
+          onClose={() => setIsIntroOpen(false)} 
+          onStartGame={handleIntroStartGame} 
+        />
+      </React.Suspense>
     </div>
   );
 }

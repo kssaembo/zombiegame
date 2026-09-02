@@ -385,7 +385,8 @@ export const IntroStoryModal: React.FC<IntroStoryModalProps> = ({
                     <div className="relative w-full max-w-2xl h-[32vh] md:h-[42vh] rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
                       <img
                         src={currentConfig.image}
-                        alt="Stage Image"
+                        alt={currentConfig.chapterTitle}
+                        decoding="async"
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />

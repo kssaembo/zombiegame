@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as XLSX from 'xlsx';
 import type { Student, GameLog } from '../src/types';
-import { isValidRoundTime, resolveTouch, resolveCure, resolveRoundEnd, logRows } from '../src/game/rules';
+import { isValidRoundTime, resolveTouch, resolveCure, resolveRoundEnd } from '../src/game/rules';
+import { createWorkbookSheets } from '../src/export/excel';
 
 const student = (id: string, patch: Partial<Student> = {}): Student => ({ id, name: id, points: 0, isZombie: false, isOriginalZombie: false, infectedThisRound: false, touchedThisRound: false, ...patch });
 
@@ -69,13 +69,19 @@ test('time input rejects zero, negatives, decimals, NaN, infinity and unsafe int
   for(const value of [0,-1,1.5,NaN,Infinity,Number.MAX_SAFE_INTEGER+1]) assert.equal(isValidRoundTime(value),false);
   for(const value of [1,120,480]) assert.equal(isValidRoundTime(value),true);
 });
-test('Excel round trip keeps both scores and post-event states in chronological order', () => {
+test('Excel round trip keeps both scores and post-event states in chronological order', async () => {
   const event=resolveTouch([student('a',{points:5}),student('b',{isZombie:true,isOriginalZombie:true,points:2})],['a','b'],[],1);
   assert.ok(!('error' in event));
   const logs: GameLog[]=[{...event.log,id:'touch',timestamp:'2026-09-01T00:00:01Z'},{id:'start',timestamp:'2026-09-01T00:00:00Z',round:1,type:'ROUND_START',message:'start'}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(logRows(logs)),'logs');
-  const loaded=XLSX.read(XLSX.write(wb,{type:'buffer',bookType:'xlsx'}),{type:'buffer'});
-  const rows=XLSX.utils.sheet_to_json<any[]>(loaded.Sheets.logs,{header:1});
+  const [logSheet,summarySheet]=createWorkbookSheets(logs,[student('a',{points:5}),student('b',{isZombie:true,isOriginalZombie:true,points:2})],1);
+  const rows=logSheet.data;
   assert.equal(rows[1][1],'ROUND_START');assert.equal(rows[2][5],'감염자');
   assert.equal(rows[2][6],5);assert.equal(rows[2][12],2);assert.equal(rows[2][13],'O');
+  assert.equal(logSheet.sheet,'게임 로그');assert.equal(logSheet.stickyRowsCount,1);
+  assert.equal(summarySheet.sheet,'학생 현황');assert.equal(summarySheet.data[1][1],'a');
+  const [{default:writeExcelFile},{readSheet}]=await Promise.all([import('write-excel-file/universal'),import('read-excel-file/node')]);
+  const blob=await writeExcelFile([logSheet,summarySheet]).toBlob();
+  const roundTripRows=await readSheet(Buffer.from(await blob.arrayBuffer()),'게임 로그');
+  assert.equal(roundTripRows[1][1],'ROUND_START');assert.equal(roundTripRows[2][5],'감염자');
+  assert.equal(roundTripRows[2][6],5);assert.equal(roundTripRows[2][12],2);assert.equal(roundTripRows[2][13],'O');
 });
