@@ -3,6 +3,9 @@ import type { GameLog, Student } from '../types';
 export type LogEntry = Omit<GameLog, 'id' | 'timestamp'>;
 export const isValidRoundTime = (value: number) => Number.isSafeInteger(value) && value > 0;
 export const statusOf = (student: Student) => student.isZombie ? '감염자' : '비감염자';
+export const hasUsedTreatment = (logs: GameLog[], studentId: string) => logs.some(
+  log => log.type === 'CURE' && log.student1Id === studentId && log.vaccineUsed === true,
+);
 
 function studentDetails(before: Student, after: Student) {
   return {

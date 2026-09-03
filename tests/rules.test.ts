@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { Student, GameLog } from '../src/types';
-import { isValidRoundTime, resolveTouch, resolveCure, resolveRoundEnd } from '../src/game/rules';
+import { hasUsedTreatment, isValidRoundTime, resolveTouch, resolveCure, resolveRoundEnd } from '../src/game/rules';
 import { createWorkbookSheets } from '../src/export/excel';
 
 const student = (id: string, patch: Partial<Student> = {}): Student => ({ id, name: id, points: 0, isZombie: false, isOriginalZombie: false, infectedThisRound: false, touchedThisRound: false, ...patch });
@@ -49,6 +49,14 @@ test('repeated treatment after reinfection remains allowed', () => {
   assert.equal(result.students[0].isZombie,false);
   assert.equal(result.log.cumulativePoints,3);
   assert.equal(result.log.status1,'비감염자');
+});
+test('treatment history identifies repeat use for the same student', () => {
+  const logs: GameLog[] = [
+    { id: 'cure-a', timestamp: '2026-09-03T00:00:00Z', round: 1, type: 'CURE', message: 'a 치료제 사용', student1Id: 'a', vaccineUsed: true },
+    { id: 'touch-b', timestamp: '2026-09-03T00:00:01Z', round: 1, type: 'TOUCH', message: 'b 접촉', student1Id: 'b', vaccineUsed: false },
+  ];
+  assert.equal(hasUsedTreatment(logs, 'a'), true);
+  assert.equal(hasUsedTreatment(logs, 'b'), false);
 });
 test('round settlement infects inactive humans and starts rounds 2 and 3 exactly once', () => {
   for (const round of [1,2]) {

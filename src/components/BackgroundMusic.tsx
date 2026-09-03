@@ -37,7 +37,7 @@ export function BackgroundMusic({ view }: { view: GameState }) {
   };
 
   return (
-    <section aria-label="배경 음악 설정" className="fixed bottom-4 right-4 z-[90] flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-xl border border-white/15 bg-slate-950/90 px-2.5 py-2 text-xs shadow-2xl backdrop-blur-md">
+    <section aria-label="배경 음악 설정" className={`fixed right-2 z-[90] flex max-w-[calc(100vw-1rem)] items-center gap-2 rounded-xl border border-white/15 bg-slate-950/90 px-2.5 py-2 text-xs shadow-2xl backdrop-blur-md sm:right-4 ${view === 'GAME' ? 'bottom-40 lg:bottom-4' : 'bottom-4'}`}>
       <audio ref={audioRef} src={src} loop preload="auto" onPlaying={() => setStatus('playing')} onPause={() => setStatus(current => current === 'blocked' || current === 'error' ? current : 'paused')} onError={() => setStatus('error')} />
       <button type="button" data-sound="select" aria-label={paused ? 'BGM 재생' : 'BGM 일시정지'} onClick={togglePlayback} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-600 text-white hover:bg-purple-500">
         {paused ? <Play className="h-4 w-4 fill-current" /> : <Pause className="h-4 w-4 fill-current" />}

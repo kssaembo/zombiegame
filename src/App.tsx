@@ -23,7 +23,7 @@ import {
   Youtube
 } from 'lucide-react';
 import { Student, GameState, GameConfig, GameLog } from './types';
-import { isValidRoundTime, resolveTouch, resolveCure, resolveRoundEnd, type LogEntry } from './game/rules';
+import { hasUsedTreatment, isValidRoundTime, resolveTouch, resolveCure, resolveRoundEnd, type LogEntry } from './game/rules';
 import { loadSave, writeSave, clearSave, type SavedGame } from './game/storage';
 import { createId } from './game/id';
 import { SceneBackground } from './components/SceneBackground';
@@ -782,6 +782,7 @@ const GameView = React.memo(({
   onAddSeconds: () => void;
 }) => {
   const [isForceEndConfirmOpen, setIsForceEndConfirmOpen] = useState(false);
+  const isRepeatedTreatment = confirmCureId !== null && hasUsedTreatment(logs, confirmCureId);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -790,7 +791,7 @@ const GameView = React.memo(({
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 pb-8 pt-44 sm:pt-40 lg:pt-8">
+    <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12">
         <div className="flex items-center gap-4">
@@ -908,7 +909,7 @@ const GameView = React.memo(({
       </div>
 
       {/* Action Bar */}
-      <div className="fixed bottom-20 left-1/2 z-50 flex w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 sm:w-auto sm:gap-4">
+      <div className="fixed bottom-56 left-1/2 z-50 flex w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 sm:w-auto sm:gap-4 lg:bottom-20">
         <div className="flex w-full items-center gap-2 rounded-3xl border border-zinc-800/50 bg-black/70 p-2 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] backdrop-blur-md sm:w-auto sm:gap-4 sm:rounded-full sm:p-4">
           <Button 
             size="lg" 
@@ -933,7 +934,7 @@ const GameView = React.memo(({
       </div>
 
       {/* Teacher and emergency controls */}
-      <aside aria-label="게임 관리 도구" className="fixed left-2 top-2 z-[70] w-[min(22rem,calc(100vw-1rem))] rounded-2xl border border-white/15 bg-slate-950/95 p-3 shadow-2xl shadow-black/60 backdrop-blur-xl sm:left-4 sm:top-4 sm:p-4">
+      <aside aria-label="게임 관리 도구" className="fixed bottom-2 left-2 z-[70] w-[min(22rem,calc(100vw-1rem))] rounded-2xl border border-white/15 bg-slate-950/95 p-3 shadow-2xl shadow-black/60 backdrop-blur-xl sm:bottom-4 sm:left-4 sm:p-4">
         <div className="flex flex-wrap gap-2">
           <Button
             variant="primary"
@@ -990,8 +991,10 @@ const GameView = React.memo(({
           >
             <Card className="max-w-sm w-full text-center">
               <img src={treatmentIcon} alt="치료제" className="mx-auto mb-4 h-20 w-20 object-contain drop-shadow-[0_0_18px_rgba(251,113,133,0.35)]" />
-              <h3 className="text-xl font-bold mb-2">치료제 사용</h3>
-              <p className="text-zinc-400 mb-6">치료제를 사용하시겠습니까?</p>
+              <h3 className="text-xl font-bold mb-2">{isRepeatedTreatment ? '치료제 추가 사용' : '치료제 사용'}</h3>
+              <p className={`mb-6 leading-relaxed ${isRepeatedTreatment ? 'font-semibold text-amber-200' : 'text-zinc-400'}`}>
+                {isRepeatedTreatment ? '이미 치료제를 한 번 사용했습니다. 추가 사용을 허락하시겠습니까?' : '치료제를 사용하시겠습니까?'}
+              </p>
               <div className="flex gap-3">
                 <Button variant="secondary" className="flex-1" onClick={onConfirmCureCancel}>취소</Button>
                 <Button variant="danger" className="flex-1" onClick={() => onConfirmCureAction(confirmCureId)}>사용하기</Button>
@@ -1123,10 +1126,13 @@ const ResultsView = React.memo(({
                   .map(s => (
                     <div key={s.id} className="flex justify-between p-3 bg-zinc-900 rounded-xl border border-zinc-800">
                       <span className="font-bold">{s.name}</span>
-                      <span className="text-purple-500 font-black">{s.points}pt</span>
+                      <span className="text-purple-500 font-black">{s.points}점</span>
                     </div>
                   ))}
               </div>
+              <p className="mt-4 rounded-xl border border-purple-400/35 bg-purple-950/45 px-4 py-3 text-sm font-semibold leading-relaxed text-purple-100">
+                비감염자 승리 시 승점은 다른 사람과의 접촉 횟수입니다.(감염자 포함)
+              </p>
             </div>
           )}
 
@@ -1436,7 +1442,11 @@ export default function App() {
             <p className="text-sm text-zinc-400 mt-3">진행 중이던 게임은 일시정지 상태로 복구됩니다. 확인 후 타이머 시작을 눌러주세요.</p>
           </Card>
         )}
-        {persistenceEnabled && !saveError && <p className="text-center text-xs text-zinc-500 mb-4">이 브라우저에 자동 저장 중 · 이어하기 시 타이머는 일시정지로 복구됩니다.</p>}
+        {persistenceEnabled && view === 'GAME' && !saveError && (
+          <p role="status" className="mx-auto mb-6 max-w-3xl rounded-2xl border border-cyan-300/45 bg-cyan-950/80 px-4 py-3 text-center text-sm font-bold leading-relaxed text-cyan-50 shadow-[0_0_26px_rgba(34,211,238,0.18)] backdrop-blur-md sm:text-base">
+            이 브라우저에서는 자동 저장 중입니다. 게임에서 나갔을 경우 다시 접속하시면 됩니다.
+          </p>
+        )}
         <AnimatePresence mode="wait">
           {view === 'START' && <StartView key="start" onStart={handleStart} />}
           {view === 'SETUP_CONFIG' && (
